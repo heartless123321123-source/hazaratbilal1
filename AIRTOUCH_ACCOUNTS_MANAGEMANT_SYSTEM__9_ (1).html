@@ -1,0 +1,1360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AirTouch Accounts Management System</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Font Plus Jakarta Sans -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- html2canvas + jsPDF for "Export as PDF" (renders the live summary to an image, then wraps it in a PDF) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- Chart.js for the Analytics section (graph view of the summary numbers) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            blue: '#0F52BA',
+                            darkBlue: '#0A2540',
+                            emerald: '#10B981',
+                            lightBg: '#F4F7FE'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #F4F7FE;
+            background-image: 
+                radial-gradient(at 10% 10%, rgba(15, 82, 186, 0.08) 0px, transparent 50%),
+                radial-gradient(at 90% 90%, rgba(16, 185, 129, 0.08) 0px, transparent 50%);
+            background-attachment: fixed;
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.88);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.7);
+            box-shadow: 0 10px 30px -10px rgba(15, 82, 186, 0.05);
+        }
+
+        .hero-module-card {
+            background: #ffffff;
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .hero-module-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 15px 30px -8px rgba(15, 82, 186, 0.15);
+            border-color: rgba(16, 185, 129, 0.4);
+        }
+
+        .gradient-bg-main {
+            background: linear-gradient(135deg, #0A2540 0%, #0F52BA 50%, #10B981 100%);
+        }
+
+        .blue-green-btn {
+            background: linear-gradient(135deg, #0F52BA 0%, #0D9488 100%);
+        }
+
+        /* Smooth Hide/Show Transition */
+        #modules-container,
+        #easypaisa-balance-container,
+        #live-summary-content,
+        #netprofit-breakdown-container,
+        #analytics-container {
+            transition: all 0.4s ease-in-out;
+            max-height: 4000px;
+            opacity: 1;
+            overflow: hidden;
+        }
+
+        #modules-container.hidden-modules,
+        #easypaisa-balance-container.hidden-modules,
+        #live-summary-content.hidden-modules,
+        #netprofit-breakdown-container.hidden-modules,
+        #analytics-container.hidden-modules {
+            max-height: 0px;
+            opacity: 0;
+            margin-bottom: 0px !important;
+            padding-top: 0px;
+            padding-bottom: 0px;
+        }
+    </style>
+</head>
+<body class="font-sans antialiased text-slate-800 pb-16 min-h-screen">
+
+    <!-- TOP HEADER -->
+    <header class="glass-card sticky top-0 z-50 border-b border-slate-200/60">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+            
+            <!-- AirTouch Branding -->
+            <div class="flex items-center space-x-4">
+                <div class="w-12 h-12 gradient-bg-main rounded-2xl flex items-center justify-center text-white font-extrabold text-xl shadow-lg shadow-brand-blue/30 tracking-wider">
+                    AT
+                </div>
+                <div>
+                    <h1 class="font-extrabold text-slate-900 text-xl leading-tight tracking-tight flex items-center gap-2">
+                        AIRTOUCH
+                        <span class="text-[10px] bg-emerald-100 text-emerald-700 font-bold px-2 py-0.5 rounded-full uppercase tracking-widest border border-emerald-200">Pro</span>
+                    </h1>
+                    <p class="text-xs font-extrabold text-brand-blue tracking-wider uppercase">ACCOUNTS MANAGEMENT SYSTEM</p>
+                </div>
+            </div>
+
+            <!-- Welcome & Date Badges -->
+            <div class="flex items-center space-x-4">
+                <div class="hidden md:flex items-center px-4 py-2 bg-white/80 rounded-2xl text-xs font-semibold text-slate-600 border border-slate-200/80 shadow-sm">
+                    <div class="w-2 h-2 rounded-full bg-emerald-500 mr-2 animate-pulse"></div>
+                    Today: <span class="ml-1 text-slate-900 font-bold">22 Jul 2026</span>
+                </div>
+
+                <!-- EXPORT FULL SCREEN AS PDF — captures the whole dashboard exactly as shown -->
+                <button onclick="exportFullDashboardPDF()" id="full-pdf-btn" class="text-xs font-bold text-white blue-green-btn hover:opacity-90 px-4 py-2.5 rounded-2xl transition flex items-center space-x-2 shadow-md">
+                    <i class="fa-solid fa-file-pdf"></i>
+                    <span>Export PDF</span>
+                </button>
+
+                <div class="flex items-center space-x-3 pl-3 border-l border-slate-200">
+                    <div class="w-10 h-10 rounded-2xl gradient-bg-main text-white p-0.5 shadow-md flex items-center justify-center font-extrabold text-sm">
+                        HB
+                    </div>
+                    <div class="hidden sm:block text-left">
+                        <span class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">Welcome</span>
+                        <span class="text-sm font-extrabold text-slate-800 leading-none">Hazrat Bilal</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </header>
+
+    <!-- MAIN WORKSPACE -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 space-y-8">
+
+        <!-- 0. EASYPAISA OVERALL BALANCE — LIVE, PULLED FROM THE EASYPAISA MODULE'S OWN LEDGER (IndexedDB) -->
+        <section>
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-xs font-black text-emerald-800 uppercase tracking-widest bg-emerald-100 border border-emerald-200 px-3 py-1.5 rounded-lg">
+                    <i class="fa-solid fa-mobile-screen-button mr-1.5"></i> EasyPaisa Overall Balance
+                </h3>
+                <div class="flex items-center space-x-2">
+                    <span class="text-xs bg-blue-600 text-white font-bold px-3 py-1 rounded-md shadow-sm">All Accounts Combined</span>
+                    <!-- TOGGLE BUTTON TO HIDE/SHOW EASYPAISA OVERALL BALANCE -->
+                    <button onclick="toggleEasyPaisaBalance()" id="easypaisa-balance-toggle-btn" class="text-xs font-bold text-brand-blue bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-2xl border border-blue-200 transition flex items-center space-x-2 shadow-sm">
+                        <i class="fa-solid fa-eye-slash" id="easypaisa-balance-toggle-icon"></i>
+                        <span id="easypaisa-balance-toggle-text">Hide Balance</span>
+                    </button>
+                </div>
+            </div>
+
+            <div id="easypaisa-balance-container" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
+                <div class="glass-card border-2 border-emerald-100 p-5 rounded-2xl relative overflow-hidden shadow-sm">
+                    <span class="text-xs font-bold text-slate-500 block uppercase">Daily Balance Range</span>
+                    <div id="mDashDaily" class="text-2xl font-black text-slate-900 mt-2">Rs. 0</div>
+                    <p class="text-[11px] text-emerald-600 font-bold mt-2 border-t border-slate-100 pt-2">Live Dynamic Average</p>
+                </div>
+
+                <div class="glass-card border-2 border-blue-100 p-5 rounded-2xl relative overflow-hidden shadow-sm">
+                    <span class="text-xs font-bold text-slate-500 block uppercase">Weekly Cumulative Cycle</span>
+                    <div id="mDashWeekly" class="text-2xl font-black text-blue-600 mt-2">Rs. 0</div>
+                    <p class="text-[11px] text-blue-500 font-medium mt-2 border-t border-slate-100 pt-2">7-Day Aggregation</p>
+                </div>
+
+                <div class="glass-card border-2 border-teal-100 p-5 rounded-2xl relative overflow-hidden shadow-sm">
+                    <span class="text-xs font-bold text-slate-500 block uppercase">Monthly Cumulative Report</span>
+                    <div id="mDashMonthly" class="text-2xl font-black text-teal-600 mt-2">Rs. 0</div>
+                    <p class="text-[11px] text-teal-600 font-medium mt-2 border-t border-slate-100 pt-2">Fiscal Statement Track</p>
+                </div>
+
+                <div class="p-5 rounded-2xl relative overflow-hidden shadow-md text-white" style="background: linear-gradient(135deg, #059669, #0d9488, #0F52BA);">
+                    <span class="text-xs font-bold text-emerald-100 block uppercase">Yearly Grand Total Balance</span>
+                    <div id="mDashYearly" class="text-2xl font-black mt-2 drop-shadow">Rs. 0</div>
+                    <p class="text-[11px] text-white/90 font-bold mt-2 border-t border-white/20 pt-2">
+                        <i class="fa-solid fa-square-check mr-1 text-emerald-300"></i> Active Ledger
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 1. MAIN MODULE CARDS (WITH HIDE / SHOW TOGGLE) -->
+        <section>
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h2 class="text-lg font-extrabold text-slate-900">Main System Modules</h2>
+                    <p class="text-xs text-slate-500 font-medium">Click module to launch</p>
+                </div>
+                
+                <!-- TOGGLE BUTTON TO HIDE/SHOW MODULES -->
+                <button onclick="toggleModules()" id="toggle-btn" class="text-xs font-bold text-brand-blue bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-2xl border border-blue-200 transition flex items-center space-x-2 shadow-sm">
+                    <i class="fa-solid fa-eye-slash" id="toggle-icon"></i>
+                    <span id="toggle-text">Hide Main Modules</span>
+                </button>
+            </div>
+
+            <div id="modules-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5">
+
+                <!-- Card 1: EasyPaisa Verification -->
+                <div class="hero-module-card p-5 rounded-3xl flex flex-col justify-between group cursor-pointer">
+                    <div>
+                        <div class="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl mb-4 group-hover:bg-emerald-500 group-hover:text-white transition">
+                            <i class="fa-solid fa-mobile-screen-button"></i>
+                        </div>
+                        <h3 class="font-extrabold text-slate-800 text-sm leading-snug">EasyPaisa Verification</h3>
+                        <p class="text-[11px] text-slate-400 mt-1">Verify live receipts</p>
+                    </div>
+                    <div class="mt-5 flex flex-col gap-2">
+                        <a href="EASY PAISA AND CASHE AMOUNT DEATILS/index.html" class="w-full py-2 blue-green-btn text-white font-bold text-xs rounded-xl flex items-center justify-center space-x-1.5 shadow-md">
+                            <span>Ledger Hub</span>
+                            <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                        </a>
+                        <a href="EASY PAISA AND CASHE AMOUNT DEATILS/AirTouch-Web.html" class="w-full py-2 bg-slate-800 text-white font-bold text-xs rounded-xl flex items-center justify-center space-x-1.5 shadow-md">
+                            <span>Neural Scan</span>
+                            <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Card 2: Inventory -->
+                <div class="hero-module-card p-5 rounded-3xl flex flex-col justify-between group cursor-pointer">
+                    <div>
+                        <div class="w-12 h-12 rounded-2xl bg-blue-50 text-brand-blue flex items-center justify-center text-xl mb-4 group-hover:bg-brand-blue group-hover:text-white transition">
+                            <i class="fa-solid fa-boxes-stacked"></i>
+                        </div>
+                        <h3 class="font-extrabold text-slate-800 text-sm leading-snug">Inventory</h3>
+                        <p class="text-[11px] text-slate-400 mt-1">Stock & Modems record</p>
+                    </div>
+                    <a href="ENVENTERY/frontend/dashboard.html" class="mt-5 w-full py-2 blue-green-btn text-white font-bold text-xs rounded-xl flex items-center justify-center space-x-1.5 shadow-md">
+                        <span>Open Module</span>
+                        <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                    </a>
+                </div>
+
+                <!-- Card 3: Expenses Overall -->
+                <div class="hero-module-card p-5 rounded-3xl flex flex-col justify-between group cursor-pointer">
+                    <div>
+                        <div class="w-12 h-12 rounded-2xl bg-rose-50 text-rose-500 flex items-center justify-center text-xl mb-4 group-hover:bg-rose-500 group-hover:text-white transition">
+                            <i class="fa-solid fa-receipt"></i>
+                        </div>
+                        <h3 class="font-extrabold text-slate-800 text-sm leading-snug">Expenses Overall</h3>
+                        <p class="text-[11px] text-slate-400 mt-1">Daily system spending</p>
+                    </div>
+                    <a href="EXPENCES OVER ALL/index.html" class="mt-5 w-full py-2 blue-green-btn text-white font-bold text-xs rounded-xl flex items-center justify-center space-x-1.5 shadow-md">
+                        <span>Open Module</span>
+                        <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                    </a>
+                </div>
+
+                <!-- Card 4: Extension Generator -->
+                <div class="hero-module-card p-5 rounded-3xl flex flex-col justify-between group cursor-pointer">
+                    <div>
+                        <div class="w-12 h-12 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center text-xl mb-4 group-hover:bg-teal-500 group-hover:text-white transition">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i>
+                        </div>
+                        <h3 class="font-extrabold text-slate-800 text-sm leading-snug">Extension Generator</h3>
+                        <p class="text-[11px] text-slate-400 mt-1">Generate dynamic scripts</p>
+                    </div>
+                    <a href="EXTANTION GENRETER/index.html" class="mt-5 w-full py-2 blue-green-btn text-white font-bold text-xs rounded-xl flex items-center justify-center space-x-1.5 shadow-md">
+                        <span>Open Module</span>
+                        <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                    </a>
+                </div>
+
+                <!-- Card 5: Packages Amount -->
+                <div class="hero-module-card p-5 rounded-3xl flex flex-col justify-between group cursor-pointer sm:col-span-2 lg:col-span-1">
+                    <div>
+                        <div class="w-12 h-12 rounded-2xl bg-cyan-50 text-cyan-600 flex items-center justify-center text-xl mb-4 group-hover:bg-cyan-600 group-hover:text-white transition">
+                            <i class="fa-solid fa-cubes"></i>
+                        </div>
+                        <h3 class="font-extrabold text-slate-800 text-sm leading-snug">Packages Amount</h3>
+                        <p class="text-[11px] text-slate-400 mt-1">Subscriptions & billing</p>
+                    </div>
+                    <a href="PACKAGS AMOUNT/index.html" class="mt-5 w-full py-2 blue-green-btn text-white font-bold text-xs rounded-xl flex items-center justify-center space-x-1.5 shadow-md">
+                        <span>Open Module</span>
+                        <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                    </a>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- 1.5 LIVE DASHBOARD SUMMARY — REAL DATA PULLED FROM EACH MODULE'S LOCALSTORAGE -->
+        <section>
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h2 class="text-lg font-extrabold text-slate-900 flex items-center gap-2">
+                        Live Dashboard Summary
+                        <span class="text-[10px] bg-emerald-100 text-emerald-700 font-bold px-2 py-0.5 rounded-full uppercase tracking-widest border border-emerald-200 flex items-center gap-1">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Live
+                        </span>
+                    </h2>
+                    <p class="text-xs text-slate-500 font-medium">Real-time status pulled directly from each module's saved data</p>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <button onclick="refreshLiveSummary()" class="text-xs font-bold text-brand-blue bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-2xl border border-blue-200 transition flex items-center space-x-2 shadow-sm">
+                        <i class="fa-solid fa-rotate"></i>
+                        <span>Refresh</span>
+                    </button>
+                    <!-- TOGGLE BUTTON TO HIDE/SHOW LIVE SUMMARY -->
+                    <button onclick="toggleLiveSummary()" id="live-summary-toggle-btn" class="text-xs font-bold text-brand-blue bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-2xl border border-blue-200 transition flex items-center space-x-2 shadow-sm">
+                        <i class="fa-solid fa-eye-slash" id="live-summary-toggle-icon"></i>
+                        <span id="live-summary-toggle-text">Hide Summary</span>
+                    </button>
+                    <!-- PDF EXPORT BUTTON — captures the summary exactly as shown, converts to image, then PDF -->
+                    <button onclick="exportLiveSummaryPDF()" id="summary-pdf-btn" class="text-xs font-bold text-white blue-green-btn hover:opacity-90 px-4 py-2 rounded-2xl transition flex items-center space-x-2 shadow-md">
+                        <i class="fa-solid fa-file-pdf"></i>
+                        <span>Export PDF</span>
+                    </button>
+                </div>
+            </div>
+
+            <div id="live-summary-content">
+                <div id="live-summary-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                    <!-- Filled in by JS at runtime -->
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. FINANCIAL PROFIT & EXPENSE BREAKDOWN (NET PROFIT HIGHLIGHTED) -->
+        <section>
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h2 class="text-lg font-extrabold text-slate-900">Net Profit & Expense Breakdown</h2>
+                    <p class="text-xs text-slate-500 font-medium">Daily, Weekly, Monthly & Yearly financials</p>
+                </div>
+
+                <!-- TOGGLE BUTTON TO HIDE/SHOW NET PROFIT & EXPENSE BREAKDOWN -->
+                <button onclick="toggleNetProfitBreakdown()" id="netprofit-toggle-btn" class="text-xs font-bold text-brand-blue bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-2xl border border-blue-200 transition flex items-center space-x-2 shadow-sm">
+                    <i class="fa-solid fa-eye-slash" id="netprofit-toggle-icon"></i>
+                    <span id="netprofit-toggle-text">Hide Breakdown</span>
+                </button>
+            </div>
+
+            <div id="netprofit-breakdown-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                
+                <!-- Daily Financial Card -->
+                <div class="glass-card p-5 rounded-3xl relative overflow-hidden border-t-4 border-t-brand-blue">
+                    <div class="flex justify-between items-center mb-3">
+                        <span class="text-xs font-extrabold text-brand-blue uppercase tracking-widest bg-blue-50 px-2.5 py-1 rounded-lg">Daily Overview</span>
+                        <i class="fa-solid fa-calendar-day text-brand-blue"></i>
+                    </div>
+                    <div class="space-y-2 border-t border-slate-100 pt-3 text-xs">
+                        <div class="flex justify-between text-slate-600 font-medium"><span>Income Received:</span><span id="npDailyIncome" class="font-bold text-slate-800">Rs. 120,000</span></div>
+                        <div class="flex justify-between text-slate-600 font-medium"><span>Total Expense:</span><span id="npDailyExpense" class="font-bold text-rose-500">Rs. 35,000</span></div>
+                        <div class="bg-emerald-50 border border-emerald-200 p-3 rounded-2xl mt-3 text-center">
+                            <span class="text-[11px] font-bold text-emerald-800 uppercase block">Daily Net Profit</span>
+                            <span id="npDailyProfit" class="text-lg font-black text-emerald-600">Rs. 85,000</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Weekly Financial Card -->
+                <div class="glass-card p-5 rounded-3xl relative overflow-hidden border-t-4 border-t-emerald-500">
+                    <div class="flex justify-between items-center mb-3">
+                        <span class="text-xs font-extrabold text-emerald-600 uppercase tracking-widest bg-emerald-50 px-2.5 py-1 rounded-lg">Weekly Overview</span>
+                        <i class="fa-solid fa-calendar-week text-emerald-600"></i>
+                    </div>
+                    <div class="space-y-2 border-t border-slate-100 pt-3 text-xs">
+                        <div class="flex justify-between text-slate-600 font-medium"><span>Income Received:</span><span id="npWeeklyIncome" class="font-bold text-slate-800">Rs. 650,000</span></div>
+                        <div class="flex justify-between text-slate-600 font-medium"><span>Total Expense:</span><span id="npWeeklyExpense" class="font-bold text-rose-500">Rs. 180,000</span></div>
+                        <div class="bg-emerald-50 border border-emerald-200 p-3 rounded-2xl mt-3 text-center">
+                            <span class="text-[11px] font-bold text-emerald-800 uppercase block">Weekly Net Profit</span>
+                            <span id="npWeeklyProfit" class="text-lg font-black text-emerald-600">Rs. 470,000</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Monthly Financial Card -->
+                <div class="glass-card p-5 rounded-3xl relative overflow-hidden border-t-4 border-t-teal-500">
+                    <div class="flex justify-between items-center mb-3">
+                        <span class="text-xs font-extrabold text-teal-600 uppercase tracking-widest bg-teal-50 px-2.5 py-1 rounded-lg">Monthly Overview</span>
+                        <i class="fa-solid fa-calendar-days text-teal-600"></i>
+                    </div>
+                    <div class="space-y-2 border-t border-slate-100 pt-3 text-xs">
+                        <div class="flex justify-between text-slate-600 font-medium"><span>Income Received:</span><span id="npMonthlyIncome" class="font-bold text-slate-800">Rs. 2,400,000</span></div>
+                        <div class="flex justify-between text-slate-600 font-medium"><span>Total Expense:</span><span id="npMonthlyExpense" class="font-bold text-rose-500">Rs. 520,000</span></div>
+                        <div class="bg-emerald-50 border border-emerald-200 p-3 rounded-2xl mt-3 text-center">
+                            <span class="text-[11px] font-bold text-emerald-800 uppercase block">Monthly Net Profit</span>
+                            <span id="npMonthlyProfit" class="text-lg font-black text-emerald-600">Rs. 1,880,000</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Yearly Financial Card -->
+                <div class="glass-card p-5 rounded-3xl relative overflow-hidden border-t-4 border-t-cyan-500">
+                    <div class="flex justify-between items-center mb-3">
+                        <span class="text-xs font-extrabold text-cyan-600 uppercase tracking-widest bg-cyan-50 px-2.5 py-1 rounded-lg">Yearly Overview</span>
+                        <i class="fa-solid fa-chart-line text-cyan-600"></i>
+                    </div>
+                    <div class="space-y-2 border-t border-slate-100 pt-3 text-xs">
+                        <div class="flex justify-between text-slate-600 font-medium"><span>Income Received:</span><span id="npYearlyIncome" class="font-bold text-slate-800">Rs. 28.5M</span></div>
+                        <div class="flex justify-between text-slate-600 font-medium"><span>Total Expense:</span><span id="npYearlyExpense" class="font-bold text-rose-500">Rs. 6.1M</span></div>
+                        <div class="bg-emerald-50 border border-emerald-200 p-3 rounded-2xl mt-3 text-center">
+                            <span class="text-[11px] font-bold text-emerald-800 uppercase block">Yearly Net Profit</span>
+                            <span id="npYearlyProfit" class="text-lg font-black text-emerald-600">Rs. 22.4M</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- 3. ANALYTICS — REAL LIVE DATA FROM EACH MODULE, SHOWN AS GRAPHS -->
+        <section>
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h2 class="text-lg font-extrabold text-slate-900 flex items-center gap-2">
+                        Analytics
+                        <span class="text-[10px] bg-emerald-100 text-emerald-700 font-bold px-2 py-0.5 rounded-full uppercase tracking-widest border border-emerald-200 flex items-center gap-1">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Live
+                        </span>
+                    </h2>
+                    <p class="text-xs text-slate-500 font-medium">Har module ka asal data (jo aapke browser mein save hai) — graph ki shakal mein</p>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <button onclick="refreshAnalyticsCharts()" class="text-xs font-bold text-brand-blue bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-2xl border border-blue-200 transition flex items-center space-x-2 shadow-sm">
+                        <i class="fa-solid fa-rotate"></i>
+                        <span>Refresh</span>
+                    </button>
+                    <!-- TOGGLE BUTTON TO HIDE/SHOW ANALYTICS -->
+                    <button onclick="toggleAnalytics()" id="analytics-toggle-btn" class="text-xs font-bold text-brand-blue bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-2xl border border-blue-200 transition flex items-center space-x-2 shadow-sm">
+                        <i class="fa-solid fa-eye-slash" id="analytics-toggle-icon"></i>
+                        <span id="analytics-toggle-text">Hide Analytics</span>
+                    </button>
+                </div>
+            </div>
+
+            <div id="analytics-container" class="grid grid-cols-1 xl:grid-cols-3 gap-5">
+
+                <!-- EasyPaisa Balance — Daily/Weekly/Monthly/Yearly -->
+                <div class="glass-card p-5 rounded-3xl xl:col-span-2">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-xs font-extrabold text-emerald-600 uppercase tracking-widest bg-emerald-50 px-2.5 py-1 rounded-lg">
+                            <i class="fa-solid fa-mobile-screen-button mr-1"></i> EasyPaisa Balance — Live Ledger
+                        </span>
+                    </div>
+                    <div class="relative" style="height: 300px;">
+                        <canvas id="chartEasyPaisa"></canvas>
+                    </div>
+                    <p id="chartEasyPaisaEmpty" class="text-[11px] text-slate-400 italic mt-2 hidden">Koi ledger entry nahi mili — EasyPaisa module ek dafa kholein taake yahan live balance dikhe.</p>
+                </div>
+
+                <!-- Billing Engine — Clear / Pending / Mismatch / Free -->
+                <div class="glass-card p-5 rounded-3xl">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-xs font-extrabold text-cyan-600 uppercase tracking-widest bg-cyan-50 px-2.5 py-1 rounded-lg">
+                            <i class="fa-solid fa-file-invoice-dollar mr-1"></i> Billing Engine
+                        </span>
+                    </div>
+                    <div class="relative" style="height: 300px;">
+                        <canvas id="chartBilling"></canvas>
+                    </div>
+                    <p id="chartBillingEmpty" class="text-[11px] text-slate-400 italic mt-2 hidden">Packages Amount module mein Dual Data Import karein, taake yahan data aaye.</p>
+                </div>
+
+                <!-- Expenses by category -->
+                <div class="glass-card p-5 rounded-3xl">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-xs font-extrabold text-rose-500 uppercase tracking-widest bg-rose-50 px-2.5 py-1 rounded-lg">
+                            <i class="fa-solid fa-receipt mr-1"></i> Expenses By Category
+                        </span>
+                    </div>
+                    <div class="relative" style="height: 300px;">
+                        <canvas id="chartExpenses"></canvas>
+                    </div>
+                    <p id="chartExpensesEmpty" class="text-[11px] text-slate-400 italic mt-2 hidden">Expenses module ek dafa kholein, taake category-wise data yahan dikhe.</p>
+                </div>
+
+                <!-- Installation billing breakdown -->
+                <div class="glass-card p-5 rounded-3xl">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-xs font-extrabold text-brand-blue uppercase tracking-widest bg-blue-50 px-2.5 py-1 rounded-lg">
+                            <i class="fa-solid fa-screwdriver-wrench mr-1"></i> Installation Billing
+                        </span>
+                    </div>
+                    <div class="relative" style="height: 280px;">
+                        <canvas id="chartInstallation"></canvas>
+                    </div>
+                    <p id="chartInstallationEmpty" class="text-[11px] text-slate-400 italic mt-2 hidden">Installation module mein records add karein, taake yahan totals dikhein.</p>
+                </div>
+
+                <!-- Inventory stock value by item -->
+                <div class="glass-card p-5 rounded-3xl xl:col-span-2">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-xs font-extrabold text-teal-600 uppercase tracking-widest bg-teal-50 px-2.5 py-1 rounded-lg">
+                            <i class="fa-solid fa-boxes-stacked mr-1"></i> Inventory — Stock Value By Item
+                        </span>
+                    </div>
+                    <div class="relative" style="height: 280px;">
+                        <canvas id="chartInventory"></canvas>
+                    </div>
+                    <p id="chartInventoryEmpty" class="text-[11px] text-slate-400 italic mt-2 hidden">Inventory module mein items add karein, taake yahan stock value dikhe.</p>
+                </div>
+
+            </div>
+        </section>
+
+    </main>
+
+    <!-- JAVASCRIPT FOR HIDE/SHOW TOGGLE -->
+    <script>
+        function toggleModules() {
+            const container = document.getElementById('modules-container');
+            const toggleText = document.getElementById('toggle-text');
+            const toggleIcon = document.getElementById('toggle-icon');
+
+            if (container.classList.contains('hidden-modules')) {
+                container.classList.remove('hidden-modules');
+                toggleText.innerText = 'Hide Main Modules';
+                toggleIcon.className = 'fa-solid fa-eye-slash';
+            } else {
+                container.classList.add('hidden-modules');
+                toggleText.innerText = 'Show Main Modules';
+                toggleIcon.className = 'fa-solid fa-eye';
+            }
+        }
+
+        function toggleEasyPaisaBalance() {
+            const container = document.getElementById('easypaisa-balance-container');
+            const toggleText = document.getElementById('easypaisa-balance-toggle-text');
+            const toggleIcon = document.getElementById('easypaisa-balance-toggle-icon');
+
+            if (container.classList.contains('hidden-modules')) {
+                container.classList.remove('hidden-modules');
+                toggleText.innerText = 'Hide Balance';
+                toggleIcon.className = 'fa-solid fa-eye-slash';
+            } else {
+                container.classList.add('hidden-modules');
+                toggleText.innerText = 'Show Balance';
+                toggleIcon.className = 'fa-solid fa-eye';
+            }
+        }
+
+        function toggleLiveSummary() {
+            const container = document.getElementById('live-summary-content');
+            const toggleText = document.getElementById('live-summary-toggle-text');
+            const toggleIcon = document.getElementById('live-summary-toggle-icon');
+
+            if (container.classList.contains('hidden-modules')) {
+                container.classList.remove('hidden-modules');
+                toggleText.innerText = 'Hide Summary';
+                toggleIcon.className = 'fa-solid fa-eye-slash';
+            } else {
+                container.classList.add('hidden-modules');
+                toggleText.innerText = 'Show Summary';
+                toggleIcon.className = 'fa-solid fa-eye';
+            }
+        }
+
+        function toggleNetProfitBreakdown() {
+            const container = document.getElementById('netprofit-breakdown-container');
+            const toggleText = document.getElementById('netprofit-toggle-text');
+            const toggleIcon = document.getElementById('netprofit-toggle-icon');
+
+            if (container.classList.contains('hidden-modules')) {
+                container.classList.remove('hidden-modules');
+                toggleText.innerText = 'Hide Breakdown';
+                toggleIcon.className = 'fa-solid fa-eye-slash';
+            } else {
+                container.classList.add('hidden-modules');
+                toggleText.innerText = 'Show Breakdown';
+                toggleIcon.className = 'fa-solid fa-eye';
+            }
+        }
+
+        function toggleAnalytics() {
+            const container = document.getElementById('analytics-container');
+            const toggleText = document.getElementById('analytics-toggle-text');
+            const toggleIcon = document.getElementById('analytics-toggle-icon');
+
+            if (container.classList.contains('hidden-modules')) {
+                container.classList.remove('hidden-modules');
+                toggleText.innerText = 'Hide Analytics';
+                toggleIcon.className = 'fa-solid fa-eye-slash';
+            } else {
+                container.classList.add('hidden-modules');
+                toggleText.innerText = 'Show Analytics';
+                toggleIcon.className = 'fa-solid fa-eye';
+            }
+        }
+    </script>
+
+    <!-- JAVASCRIPT FOR LIVE DASHBOARD SUMMARY -->
+    <!-- Reuses the REAL verification engine from the Packages Amount module
+         (same SETTINGS + Verifier logic) so Net Profit numbers here always
+         match exactly what that module itself calculates. -->
+    <script src="PACKAGS AMOUNT/settings.js"></script>
+    <script src="PACKAGS AMOUNT/verify.js"></script>
+    <script>
+        // Har module apna data isi browser ke localStorage mein save karta hai
+        // (jab wo module page kabhi khola/use hua ho). Yahan hum wahi keys
+        // padh kar asli, live totals nikalte hain — koi fake/static number nahi.
+        function fmtPKR(n) {
+            n = Number(n) || 0;
+            return 'Rs. ' + n.toLocaleString('en-PK');
+        }
+
+        function safeParse(key) {
+            try {
+                const raw = localStorage.getItem(key);
+                return raw ? JSON.parse(raw) : null;
+            } catch (e) {
+                return null;
+            }
+        }
+
+        // Aapke asal store inventory items (jo aapne bataye) — agar yeh key
+        // localStorage mein pehle se maujood nahi to ek dafa seed kar dete hain,
+        // taake Inventory Summary card foran live real data dikhaye.
+        (function seedRealInventoryOnce() {
+            const KEY = 'airtouch_store_inventory_items';
+            if (localStorage.getItem(KEY)) return; // already has data, don't overwrite
+
+            const realItems = [
+                { item_code: 'ONU-0001', item_name: 'ZTE GPON ONU Modem',        available_stock: 100, purchase_price: 3200, sale_price: 3500, unit: 'Pcs' },
+                { item_code: 'ONU-0002', item_name: 'FiberHome 10 Module',       available_stock: 40,  purchase_price: 2900, sale_price: 3200, unit: 'Pcs' },
+                { item_code: 'RTR-0007', item_name: 'TP-Link Dual Band Router',  available_stock: 25,  purchase_price: 4600, sale_price: 5200, unit: 'Pcs' },
+                { item_code: 'CAB-0125', item_name: 'Fiber Drop Cable (100m)',   available_stock: 15,  purchase_price: 1800, sale_price: 2100, unit: 'Pcs' },
+                { item_code: 'ADP-0042', item_name: '12V Power Adapter',         available_stock: 60,  purchase_price: 320,  sale_price: 400,  unit: 'Pcs' }
+            ];
+
+            localStorage.setItem(KEY, JSON.stringify(realItems));
+        })();
+
+        function summaryCard(opts) {
+            return `
+                <div class="glass-card p-5 rounded-3xl relative overflow-hidden border-t-4 ${opts.borderClass}">
+                    <div class="flex justify-between items-center mb-3">
+                        <span class="text-xs font-extrabold ${opts.textClass} uppercase tracking-widest ${opts.bgClass} px-2.5 py-1 rounded-lg">${opts.title}</span>
+                        <i class="fa-solid ${opts.icon} ${opts.textClass}"></i>
+                    </div>
+                    <div class="space-y-2 border-t border-slate-100 pt-3 text-xs">
+                        ${opts.rows.map(r => `
+                            <div class="flex justify-between text-slate-600 font-medium">
+                                <span>${r.label}:</span>
+                                <span class="font-bold ${r.highlight ? 'text-emerald-600' : 'text-slate-800'}">${r.value}</span>
+                            </div>
+                        `).join('')}
+                        ${opts.emptyNote ? `<p class="text-[10px] text-slate-400 mt-2 italic">${opts.emptyNote}</p>` : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Billing Engine dashboard (dashboard.html) saves ALL its data under
+        // a single localStorage key 'airtouch_state_v1' — { saleData, billingData,
+        // billingAnalysisResults: { clear, pending, mismatchLess, mismatchExtra } }.
+        // This mirrors _computeTopStats() / _renderBillingAnalysis() field-for-field
+        // (paidAmount / pendingAmount / differenceAmount / extraAmount, and the
+        // 'no_payment' pending-reason exclusion) so numbers here always match the
+        // Billing Engine dashboard exactly.
+        function isFreeUserName(name) {
+            return String(name || '').toLowerCase().includes('free');
+        }
+
+        function buildBillingEngineCard() {
+            const state = safeParse('airtouch_state_v1');
+            const r = state && state.billingAnalysisResults;
+
+            if (!state || !r) {
+                return summaryCard({
+                    title: 'Packages Amount — Billing Engine', icon: 'fa-file-invoice-dollar', borderClass: 'border-t-cyan-500',
+                    textClass: 'text-cyan-600', bgClass: 'bg-cyan-50',
+                    rows: [{ label: 'Status', value: 'Not opened yet' }],
+                    emptyNote: 'Billing Engine dashboard mein Dual Data Import karo, taake yahan live totals dikhein.'
+                });
+            }
+
+            const clearRows = r.clear || [];
+            const truePending = (r.pending || []).filter(x => x.reason !== 'no_payment');
+            const mismatchLessRows = r.mismatchLess || [];
+            const mismatchExtraRows = r.mismatchExtra || [];
+
+            const saleData = state.saleData || [];
+            const billingData = state.billingData || [];
+            const freeUsersAll = [
+                ...saleData.filter(x => isFreeUserName(x.name)),
+                ...billingData.filter(x => isFreeUserName(x.name))
+            ];
+
+            const totalClearAmt = clearRows.reduce((s, x) => s + (Number(x.paidAmount) || 0), 0);
+            const totalPendingAmt = truePending.reduce((s, x) => s + (Number(x.pendingAmount) || 0), 0);
+            const totalLessAmt = mismatchLessRows.reduce((s, x) => s + (Number(x.differenceAmount) || 0), 0);
+            const totalExtraAmt = mismatchExtraRows.reduce((s, x) => s + (Number(x.extraAmount) || 0), 0);
+            const freeUsersAmt = freeUsersAll.reduce((s, x) => s + (Number(x.amount) || 0), 0);
+
+            return summaryCard({
+                title: 'Packages Amount — Billing Engine', icon: 'fa-file-invoice-dollar', borderClass: 'border-t-cyan-500',
+                textClass: 'text-cyan-600', bgClass: 'bg-cyan-50',
+                rows: [
+                    { label: 'Clear Bills', value: clearRows.length },
+                    { label: 'Pending Bills', value: truePending.length },
+                    { label: 'Mismatch Bills', value: mismatchLessRows.length + mismatchExtraRows.length },
+                    { label: 'Free Users', value: freeUsersAll.length },
+                    { label: 'Clear Amount', value: fmtPKR(totalClearAmt), highlight: true },
+                    { label: 'Pending Amount', value: fmtPKR(totalPendingAmt) },
+                    { label: 'Mismatch — Less', value: fmtPKR(totalLessAmt) },
+                    { label: 'Mismatch — Extra', value: fmtPKR(totalExtraAmt) },
+                    { label: 'Free Users Amount', value: fmtPKR(freeUsersAmt) }
+                ]
+            });
+        }
+
+        function buildInventoryCard() {
+            const items = safeParse('airtouch_dashboard_items') || safeParse('airtouch_store_inventory_items');
+            if (!items || !Array.isArray(items)) {
+                return summaryCard({
+                    title: 'Inventory', icon: 'fa-boxes-stacked', borderClass: 'border-t-brand-blue',
+                    textClass: 'text-brand-blue', bgClass: 'bg-blue-50',
+                    rows: [{ label: 'Status', value: 'Not opened yet' }],
+                    emptyNote: 'Open the Inventory module once to start tracking live stock here.'
+                });
+            }
+            const totalItems = items.length;
+            const totalStock = items.reduce((s, i) => s + (Number(i.available_stock) || 0), 0);
+            const stockValue = items.reduce((s, i) => s + (Number(i.available_stock) || 0) * (Number(i.sale_price) || 0), 0);
+            const lowStock = items.filter(i => (Number(i.available_stock) || 0) <= 5).length;
+            return summaryCard({
+                title: 'Inventory', icon: 'fa-boxes-stacked', borderClass: 'border-t-brand-blue',
+                textClass: 'text-brand-blue', bgClass: 'bg-blue-50',
+                rows: [
+                    { label: 'Total Items', value: totalItems },
+                    { label: 'Units In Stock', value: totalStock },
+                    { label: 'Low Stock Alerts', value: lowStock, highlight: lowStock === 0 },
+                    { label: 'Stock Value', value: fmtPKR(stockValue) }
+                ]
+            });
+        }
+
+        // Installation module saves its records in localStorage under
+        // 'installations_data' (same key/shape the Installation List page
+        // itself reads/writes). Totals math mirrors that page's own
+        // installTotals()/updateListMetrics() exactly, so numbers always match.
+        function buildInstallationCard() {
+            const installations = safeParse('installations_data');
+            if (!installations || !Array.isArray(installations) || installations.length === 0) {
+                return summaryCard({
+                    title: 'Installation Total', icon: 'fa-screwdriver-wrench', borderClass: 'border-t-emerald-500',
+                    textClass: 'text-emerald-600', bgClass: 'bg-emerald-50',
+                    rows: [{ label: 'Total Installations', value: 0 }],
+                    emptyNote: 'Open the Installation module once to start tracking live totals here.'
+                });
+            }
+
+            const installTotals = inst => {
+                const wireTotal = Math.round((inst.wire_rate || 0) * (inst.wire_meters || 0) * 100) / 100;
+                const extra = wireTotal + (inst.extra_modem || 0) + (inst.extra_patch_cord || 0) + (inst.other_item_amount || 0);
+                const grand = (inst.installation_charge || 0) + extra;
+                return { fee: inst.installation_charge || 0, extra, grand };
+            };
+
+            const now = new Date();
+            let totalFee = 0, totalExtra = 0, totalGrand = 0, monthCount = 0;
+            installations.forEach(i => {
+                const t = installTotals(i);
+                totalFee += t.fee; totalExtra += t.extra; totalGrand += t.grand;
+                const dt = new Date(i.date);
+                if (dt.getFullYear() === now.getFullYear() && dt.getMonth() === now.getMonth()) monthCount++;
+            });
+
+            return summaryCard({
+                title: 'Installation Total', icon: 'fa-screwdriver-wrench', borderClass: 'border-t-emerald-500',
+                textClass: 'text-emerald-600', bgClass: 'bg-emerald-50',
+                rows: [
+                    { label: 'Total Installations', value: installations.length },
+                    { label: 'Installation Charges', value: fmtPKR(totalFee) },
+                    { label: 'Extra Billed (Wire+Modem+Cord)', value: fmtPKR(totalExtra) },
+                    { label: 'Grand Total Billed', value: fmtPKR(totalGrand), highlight: true },
+                    { label: 'This Month', value: monthCount }
+                ]
+            });
+        }
+
+        function buildExpensesCard() {
+            const data = safeParse('airtouch_expense_data_v1');
+            if (!data || !Array.isArray(data)) {
+                return summaryCard({
+                    title: 'Expenses Overall', icon: 'fa-receipt', borderClass: 'border-t-rose-500',
+                    textClass: 'text-rose-500', bgClass: 'bg-rose-50',
+                    rows: [{ label: 'Status', value: 'Not opened yet' }],
+                    emptyNote: 'Open the Expenses module once to start tracking live spending here.'
+                });
+            }
+
+            // Same city filter the module itself is currently set to (ALL by default)
+            const activeCity = localStorage.getItem('airtouch_active_city_v1') || 'ALL';
+            const filtered = activeCity === 'ALL' ? data : data.filter(i => i.city === activeCity);
+            const safeAmount = i => Number(i.amount) || 0;
+
+            // Same category groups + matching rules as the Expenses module's
+            // own "Active City Summary" — kept identical on purpose.
+            const groups = [
+                { label: 'Food Expense', match: i => (i.category || '').includes('Food') },
+                { label: 'Medical Expense', match: i => (i.category || '').includes('Medical') },
+                { label: 'Rent / Transport', match: i => (i.category || '').includes('Rent') && !(i.category || '').includes('Office') },
+                { label: 'Salary Expense', match: i => (i.category || '').includes('Salary') },
+                { label: 'Utility Bills (Water/Bijli/Gas)', match: i => ['Water', 'Electricity', 'Bijli', 'Gas', 'Office Rent'].some(k => (i.category || '').includes(k)) },
+                { label: 'Other Expense', match: i => (i.category || '').includes('Other') || (i.category || '').includes('Supplies') }
+            ];
+
+            const totalAmount = filtered.reduce((s, i) => s + safeAmount(i), 0);
+            const rows = [{ label: 'Total Amount', value: fmtPKR(totalAmount), highlight: true }];
+            groups.forEach(g => {
+                const sum = filtered.filter(g.match).reduce((s, i) => s + safeAmount(i), 0);
+                rows.push({ label: g.label, value: fmtPKR(sum) });
+            });
+
+            const cityLabel = activeCity === 'ALL' ? 'All Cities' : activeCity;
+            return summaryCard({
+                title: `Active City Summary — ${cityLabel}`, icon: 'fa-calculator', borderClass: 'border-t-rose-500',
+                textClass: 'text-rose-500', bgClass: 'bg-rose-50',
+                rows
+            });
+        }
+
+        // EasyPaisa module saves its ledger in IndexedDB (AirTouchLedgerDB -> "entries"),
+        // NOT localStorage. This reads it read-only, without ever creating/upgrading
+        // the database itself, so it can never corrupt the real module's schema.
+        function loadEasyPaisaEntries() {
+            return new Promise((resolve) => {
+                if (!('indexedDB' in window)) { resolve([]); return; }
+                const req = indexedDB.open('AirTouchLedgerDB');
+                req.onupgradeneeded = (ev) => {
+                    // DB doesn't exist yet in this browser (module never opened here).
+                    // Abort so we don't accidentally create an empty/mismatched database.
+                    ev.target.transaction.abort();
+                };
+                req.onsuccess = (ev) => {
+                    const db = ev.target.result;
+                    if (!db.objectStoreNames.contains('entries')) { db.close(); resolve([]); return; }
+                    const tx = db.transaction('entries', 'readonly');
+                    const getAllReq = tx.objectStore('entries').getAll();
+                    getAllReq.onsuccess = () => { resolve(getAllReq.result || []); db.close(); };
+                    getAllReq.onerror = () => { resolve([]); db.close(); };
+                };
+                req.onerror = () => resolve([]);
+                req.onblocked = () => resolve([]);
+            });
+        }
+
+        function mkBucket() { return { total: 0, count: 0 }; }
+        function addToBucket(acc, amount) {
+            acc.total += Number(amount) || 0;
+            acc.count += 1;
+        }
+
+        function netProfitChip(icon, label, badge, amount, colorClass) {
+            return `
+                <div class="bg-white/70 rounded-2xl p-3.5 border border-slate-200/70">
+                    <div class="flex items-center justify-between mb-1.5">
+                        <span class="text-[11px] font-extrabold text-slate-700">${icon} ${label}</span>
+                    </div>
+                    <div class="text-[10px] text-slate-400 font-semibold mb-1">${badge}</div>
+                    <div class="text-sm font-black ${colorClass}">${amount}</div>
+                </div>
+            `;
+        }
+
+        function buildNetProfitBlock() {
+            const container = document.getElementById('live-net-profit-block');
+            const db = safeParse('airtouch_db_v1');
+
+            if (!db || (!(db.billing || []).length && !(db.panel || []).length)) {
+                container.innerHTML = `
+                    <div class="glass-card p-5 rounded-3xl text-center text-xs text-slate-400 italic">
+                        💰 Net Profit summary yahan aayega — pehle Packages Amount module mein Billing/Panel sheet import karo.
+                    </div>
+                `;
+                return;
+            }
+
+            const { results } = Verifier.run(db.billing || [], db.panel || []);
+
+            const clear = mkBucket();        // CLEAR — Panel & Billing matched, amount collected
+            const outstanding = mkBucket();  // PENDING_BILL — in Panel, billing not received yet
+            const free = mkBucket();         // FREE_USER — free package / investment
+            const advance = mkBucket();      // MISMATCH, Billing > Panel — zyada wasooli
+            const shortPay = mkBucket();     // MISMATCH, Billing < Panel — kam wasooli
+            const noPanel = mkBucket();      // PREVIOUS_MONTH — in Billing, no Panel entry
+
+            results.forEach(r => {
+                if (r.status === 'CLEAR') addToBucket(clear, r.amount);
+                else if (r.status === 'PENDING_BILL') addToBucket(outstanding, r.amount);
+                else if (r.status === 'FREE_USER') addToBucket(free, r.amount);
+                else if (r.status === 'PREVIOUS_MONTH') addToBucket(noPanel, r.amount);
+                else if (r.status === 'MISMATCH' && r.billingAmount != null && r.panelAmount != null) {
+                    if (r.billingAmount > r.panelAmount) addToBucket(advance, r.billingAmount - r.panelAmount);
+                    else if (r.billingAmount < r.panelAmount) addToBucket(shortPay, r.panelAmount - r.billingAmount);
+                }
+            });
+
+            const netProfit = clear.total + advance.total + noPanel.total - free.total - shortPay.total;
+            const positive = netProfit >= 0;
+
+            container.innerHTML = `
+                <div class="rounded-3xl p-5 shadow-lg" style="background:${positive ? 'linear-gradient(135deg,#059669,#047857)' : 'linear-gradient(135deg,#dc2626,#b91c1c)'}">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <div class="text-white/80 text-xs font-bold uppercase tracking-widest">💰 Net Profit — Packages Amount</div>
+                            <div class="text-white text-2xl font-black mt-1">${fmtPKR(netProfit)}</div>
+                        </div>
+                        <span class="text-[10px] font-bold text-white bg-white/20 px-3 py-1 rounded-full uppercase">Live</span>
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+                        ${netProfitChip('✅', 'CLEAR PAID PROFIT', clear.count + ' USERS CLEAR', fmtPKR(clear.total), 'text-emerald-600')}
+                        ${netProfitChip('🧾', 'OUTSTANDING / BAQI', outstanding.count + ' USERS PENDING', fmtPKR(outstanding.total), 'text-amber-600')}
+                        ${netProfitChip('🛡️', 'FREE USERS / INVESTMENT', free.count + ' USERS FREE', fmtPKR(free.total), 'text-blue-600')}
+                        ${netProfitChip('⬇️', 'SHORT PAY / ZYADA WASOOLI', advance.count + ' USERS SHORT', fmtPKR(advance.total), 'text-purple-600')}
+                        ${netProfitChip('⬇️', 'SHORT PAY / KAM WASOOLI', shortPay.count + ' USERS SHORT', fmtPKR(shortPay.total), 'text-pink-600')}
+                        ${netProfitChip('⚠️', 'NO PANEL PAID USERS', noPanel.count + ' USERS NO PANEL', fmtPKR(noPanel.total), 'text-red-600')}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Fills in the 4 big "EasyPaisa Overall Balance" cards at the very top of the
+        // dashboard (Daily / Weekly / Monthly / Yearly), using the exact same live
+        // ledger data + date-window math as the EasyPaisa card lower down the page.
+        async function refreshEasyPaisaOverallCards() {
+            const entries = await loadEasyPaisaEntries();
+            const safeAmount = e => Number(e.amount) || 0;
+            const entryTime = e => {
+                const t = Number(e.createdTime);
+                if (!isNaN(t) && t > 0) return t;
+                const parsed = Date.parse(e.date);
+                return isNaN(parsed) ? 0 : parsed;
+            };
+
+            const now = new Date();
+            const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+            const startOfWeek = startOfToday - 6 * 86400000; // rolling 7-day window incl. today
+            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+            const startOfYear = new Date(now.getFullYear(), 0, 1).getTime();
+
+            const sumSince = since => (entries || []).filter(e => entryTime(e) >= since).reduce((s, e) => s + safeAmount(e), 0);
+
+            const dailyEl = document.getElementById('mDashDaily');
+            const weeklyEl = document.getElementById('mDashWeekly');
+            const monthlyEl = document.getElementById('mDashMonthly');
+            const yearlyEl = document.getElementById('mDashYearly');
+            if (dailyEl) dailyEl.textContent = fmtPKR(sumSince(startOfToday));
+            if (weeklyEl) weeklyEl.textContent = fmtPKR(sumSince(startOfWeek));
+            if (monthlyEl) monthlyEl.textContent = fmtPKR(sumSince(startOfMonth));
+            if (yearlyEl) yearlyEl.textContent = fmtPKR(sumSince(startOfYear));
+        }
+
+        async function refreshLiveSummary() {
+            refreshEasyPaisaOverallCards();
+            const grid = document.getElementById('live-summary-grid');
+            grid.innerHTML = buildBillingEngineCard() + buildInstallationCard() + buildInventoryCard() + buildExpensesCard();
+        }
+
+        // EXPORT FULL DASHBOARD SCREEN AS PDF
+        // Screenshots the ENTIRE visible dashboard (<main> — EasyPaisa Overall
+        // Balance, Modules, Net Profit & Expense Breakdown, everything on
+        // screen) exactly pixel-for-pixel as it's currently shown, then wraps
+        // that image into a multi-page A4 PDF (so nothing gets cut off if the
+        // page is taller than one A4 sheet). On phones with WhatsApp/Email
+        // share support it opens the native share sheet directly; otherwise
+        // it just downloads the file.
+        async function exportFullDashboardPDF() {
+            const btn = document.getElementById('full-pdf-btn');
+            const originalBtnHTML = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>Generating...</span>';
+
+            try {
+                const target = document.querySelector('main');
+
+                const canvas = await html2canvas(target, {
+                    scale: 2,
+                    backgroundColor: '#F4F7FE',
+                    useCORS: true,
+                    windowWidth: target.scrollWidth,
+                    windowHeight: target.scrollHeight
+                });
+
+                const imgData = canvas.toDataURL('image/png');
+                const { jsPDF } = window.jspdf;
+
+                const pdfWidth = 210; // A4 width in mm
+                const pageHeight = 297; // A4 height in mm
+                const imgHeightMM = (canvas.height * pdfWidth) / canvas.width;
+
+                const pdf = new jsPDF('p', 'mm', 'a4');
+
+                if (imgHeightMM <= pageHeight) {
+                    // Fits on a single page — no need to split.
+                    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, imgHeightMM);
+                } else {
+                    // Taller than one A4 page — slice the tall screenshot across
+                    // multiple pages so every part of the screen still shows up
+                    // exactly as captured, nothing cropped or squeezed.
+                    let heightLeftMM = imgHeightMM;
+                    let positionMM = 0;
+                    pdf.addImage(imgData, 'PNG', 0, positionMM, pdfWidth, imgHeightMM);
+                    heightLeftMM -= pageHeight;
+                    while (heightLeftMM > 0) {
+                        positionMM = heightLeftMM - imgHeightMM;
+                        pdf.addPage();
+                        pdf.addImage(imgData, 'PNG', 0, positionMM, pdfWidth, imgHeightMM);
+                        heightLeftMM -= pageHeight;
+                    }
+                }
+
+                const dateStamp = new Date().toISOString().slice(0, 10);
+                const fileName = `AirTouch-Dashboard-${dateStamp}.pdf`;
+                const pdfBlob = pdf.output('blob');
+
+                let shared = false;
+                if (navigator.canShare) {
+                    const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
+                    if (navigator.canShare({ files: [pdfFile] })) {
+                        try {
+                            await navigator.share({
+                                files: [pdfFile],
+                                title: 'AirTouch Dashboard',
+                                text: 'AirTouch Dashboard'
+                            });
+                            shared = true;
+                        } catch (shareErr) {
+                            shared = shareErr && shareErr.name === 'AbortError' ? true : false;
+                        }
+                    }
+                }
+
+                if (!shared) {
+                    const url = URL.createObjectURL(pdfBlob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = fileName;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                }
+            } catch (err) {
+                console.error('PDF export failed:', err);
+                alert('PDF export nahi ho saka. Dobara try karein.');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalBtnHTML;
+            }
+        }
+
+        // EXPORT LIVE SUMMARY AS PDF
+        // Screenshots the "Live Dashboard Summary" block exactly as it is shown on
+        // screen (so it looks the same in the PDF), then wraps that image into a
+        // PDF file. On phones with WhatsApp/share support it opens the share sheet
+        // directly (so it can be sent straight to boss); otherwise it just downloads.
+        async function exportLiveSummaryPDF() {
+            const btn = document.getElementById('summary-pdf-btn');
+            const originalBtnHTML = btn.innerHTML;
+
+            // Make sure hidden summary is visible first so the screenshot isn't blank
+            const contentEl = document.getElementById('live-summary-content');
+            const wasHidden = contentEl.classList.contains('hidden-modules');
+            if (wasHidden) contentEl.classList.remove('hidden-modules');
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>Generating...</span>';
+
+            try {
+                await new Promise(r => setTimeout(r, wasHidden ? 450 : 0)); // let the show-transition finish
+
+                const canvas = await html2canvas(contentEl, {
+                    scale: 2,
+                    backgroundColor: '#F4F7FE',
+                    useCORS: true
+                });
+
+                const imgData = canvas.toDataURL('image/png');
+                const { jsPDF } = window.jspdf;
+
+                const pdfWidth = 210; // A4 width in mm
+                const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+                const pdf = new jsPDF('p', 'mm', [pdfWidth, pdfHeight]);
+                pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+
+                const dateStamp = new Date().toISOString().slice(0, 10);
+                const fileName = `AirTouch-Live-Summary-${dateStamp}.pdf`;
+                const pdfBlob = pdf.output('blob');
+
+                // Try native share sheet first (send directly to boss via WhatsApp/Email/etc.)
+                let shared = false;
+                if (navigator.canShare) {
+                    const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
+                    if (navigator.canShare({ files: [pdfFile] })) {
+                        try {
+                            await navigator.share({
+                                files: [pdfFile],
+                                title: 'AirTouch Live Dashboard Summary',
+                                text: 'AirTouch Live Dashboard Summary'
+                            });
+                            shared = true;
+                        } catch (shareErr) {
+                            // user cancelled the share sheet — fall back to download below
+                            shared = shareErr && shareErr.name === 'AbortError' ? true : false;
+                        }
+                    }
+                }
+
+                if (!shared) {
+                    const url = URL.createObjectURL(pdfBlob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = fileName;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                }
+            } catch (err) {
+                console.error('PDF export failed:', err);
+                alert('PDF export nahi ho saka. Dobara try karein.');
+            } finally {
+                if (wasHidden) contentEl.classList.add('hidden-modules');
+                btn.disabled = false;
+                btn.innerHTML = originalBtnHTML;
+            }
+        }
+
+        // Page load hote hi ek dafa summary bana do
+        refreshLiveSummary();
+    </script>
+
+    <!-- JAVASCRIPT FOR ANALYTICS CHARTS — reads the SAME real data each module
+         already saves (EasyPaisa IndexedDB ledger, Billing Engine / Packages
+         Amount localStorage, Expenses localStorage, Installation localStorage,
+         Inventory localStorage) and draws it as graphs. No fake/demo numbers —
+         if a module was never opened yet, that chart shows an empty-state note
+         instead of drawing zeros. -->
+    <script>
+        let chartEasyPaisa, chartBilling, chartExpenses, chartInstallation, chartInventory;
+
+        function showChartEmpty(canvasId, emptyId, isEmpty) {
+            const canvas = document.getElementById(canvasId);
+            const note = document.getElementById(emptyId);
+            if (canvas) canvas.style.display = isEmpty ? 'none' : 'block';
+            if (note) note.classList.toggle('hidden', !isEmpty);
+        }
+
+        // 1) EasyPaisa Balance — reuses the same live ledger totals already
+        // computed for the top "EasyPaisa Overall Balance" cards.
+        async function renderEasyPaisaChart() {
+            const entries = await loadEasyPaisaEntries();
+            const isEmpty = !entries || entries.length === 0;
+            showChartEmpty('chartEasyPaisa', 'chartEasyPaisaEmpty', isEmpty);
+            if (isEmpty) return;
+
+            const safeAmount = e => Number(e.amount) || 0;
+            const entryTime = e => {
+                const t = Number(e.createdTime);
+                if (!isNaN(t) && t > 0) return t;
+                const parsed = Date.parse(e.date);
+                return isNaN(parsed) ? 0 : parsed;
+            };
+            const now = new Date();
+            const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+            const startOfWeek = startOfToday - 6 * 86400000;
+            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+            const startOfYear = new Date(now.getFullYear(), 0, 1).getTime();
+            const sumSince = since => entries.filter(e => entryTime(e) >= since).reduce((s, e) => s + safeAmount(e), 0);
+
+            const data = [sumSince(startOfToday), sumSince(startOfWeek), sumSince(startOfMonth), sumSince(startOfYear)];
+
+            const ctx = document.getElementById('chartEasyPaisa');
+            if (chartEasyPaisa) chartEasyPaisa.destroy();
+            chartEasyPaisa = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Daily', 'Weekly', 'Monthly', 'Yearly'],
+                    datasets: [{ label: 'Balance', data, backgroundColor: ['#10B981', '#0F52BA', '#0d9488', '#059669'], borderRadius: 8 }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => fmtPKR(c.raw) } } },
+                    scales: { y: { ticks: { callback: (v) => fmtPKR(v) }, grid: { color: '#eef2f7' } }, x: { grid: { display: false } } }
+                }
+            });
+        }
+
+        // 2) Billing Engine — Clear / Pending / Mismatch Less / Mismatch Extra / Free Users
+        function renderBillingChart() {
+            const state = safeParse('airtouch_state_v1');
+            const r = state && state.billingAnalysisResults;
+            const isEmpty = !state || !r;
+            showChartEmpty('chartBilling', 'chartBillingEmpty', isEmpty);
+            if (isEmpty) return;
+
+            const clearRows = r.clear || [];
+            const truePending = (r.pending || []).filter(x => x.reason !== 'no_payment');
+            const mismatchLessRows = r.mismatchLess || [];
+            const mismatchExtraRows = r.mismatchExtra || [];
+            const saleData = state.saleData || [];
+            const billingData = state.billingData || [];
+            const freeUsersAll = [
+                ...saleData.filter(x => isFreeUserName(x.name)),
+                ...billingData.filter(x => isFreeUserName(x.name))
+            ];
+
+            const totalClearAmt = clearRows.reduce((s, x) => s + (Number(x.paidAmount) || 0), 0);
+            const totalPendingAmt = truePending.reduce((s, x) => s + (Number(x.pendingAmount) || 0), 0);
+            const totalLessAmt = mismatchLessRows.reduce((s, x) => s + (Number(x.differenceAmount) || 0), 0);
+            const totalExtraAmt = mismatchExtraRows.reduce((s, x) => s + (Number(x.extraAmount) || 0), 0);
+            const freeUsersAmt = freeUsersAll.reduce((s, x) => s + (Number(x.amount) || 0), 0);
+
+            const ctx = document.getElementById('chartBilling');
+            if (chartBilling) chartBilling.destroy();
+            chartBilling = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Clear', 'Pending', 'Mismatch (Less)', 'Mismatch (Extra)', 'Free Users'],
+                    datasets: [{
+                        data: [totalClearAmt, totalPendingAmt, totalLessAmt, totalExtraAmt, freeUsersAmt],
+                        backgroundColor: ['#10B981', '#f59e0b', '#a855f7', '#ec4899', '#0F52BA'],
+                        borderWidth: 2, borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false, cutout: '60%',
+                    plugins: {
+                        legend: { position: 'bottom', labels: { font: { weight: 'bold', size: 10 }, boxWidth: 10 } },
+                        tooltip: { callbacks: { label: (c) => c.label + ': ' + fmtPKR(c.raw) } }
+                    }
+                }
+            });
+        }
+
+        // 3) Expenses by category — same groups/matching rules as the
+        // "Active City Summary" card, so numbers always match.
+        function renderExpensesChart() {
+            const data = safeParse('airtouch_expense_data_v1');
+            const isEmpty = !data || !Array.isArray(data) || data.length === 0;
+            showChartEmpty('chartExpenses', 'chartExpensesEmpty', isEmpty);
+            if (isEmpty) return;
+
+            const activeCity = localStorage.getItem('airtouch_active_city_v1') || 'ALL';
+            const filtered = activeCity === 'ALL' ? data : data.filter(i => i.city === activeCity);
+            const safeAmount = i => Number(i.amount) || 0;
+            const groups = [
+                { label: 'Food', match: i => (i.category || '').includes('Food') },
+                { label: 'Medical', match: i => (i.category || '').includes('Medical') },
+                { label: 'Rent / Transport', match: i => (i.category || '').includes('Rent') && !(i.category || '').includes('Office') },
+                { label: 'Salary', match: i => (i.category || '').includes('Salary') },
+                { label: 'Utility Bills', match: i => ['Water', 'Electricity', 'Bijli', 'Gas', 'Office Rent'].some(k => (i.category || '').includes(k)) },
+                { label: 'Other', match: i => (i.category || '').includes('Other') || (i.category || '').includes('Supplies') }
+            ];
+            const values = groups.map(g => filtered.filter(g.match).reduce((s, i) => s + safeAmount(i), 0));
+
+            const ctx = document.getElementById('chartExpenses');
+            if (chartExpenses) chartExpenses.destroy();
+            chartExpenses = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: groups.map(g => g.label),
+                    datasets: [{
+                        data: values,
+                        backgroundColor: ['#f43f5e', '#a855f7', '#0F52BA', '#f59e0b', '#0d9488', '#64748b'],
+                        borderWidth: 2, borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false, cutout: '60%',
+                    plugins: {
+                        legend: { position: 'bottom', labels: { font: { weight: 'bold', size: 10 }, boxWidth: 10 } },
+                        tooltip: { callbacks: { label: (c) => c.label + ': ' + fmtPKR(c.raw) } }
+                    }
+                }
+            });
+        }
+
+        // 4) Installation billing — Installation Charges / Extra Billed / Grand Total
+        function renderInstallationChart() {
+            const installations = safeParse('installations_data');
+            const isEmpty = !installations || !Array.isArray(installations) || installations.length === 0;
+            showChartEmpty('chartInstallation', 'chartInstallationEmpty', isEmpty);
+            if (isEmpty) return;
+
+            const installTotals = inst => {
+                const wireTotal = Math.round((inst.wire_rate || 0) * (inst.wire_meters || 0) * 100) / 100;
+                const extra = wireTotal + (inst.extra_modem || 0) + (inst.extra_patch_cord || 0) + (inst.other_item_amount || 0);
+                const grand = (inst.installation_charge || 0) + extra;
+                return { fee: inst.installation_charge || 0, extra, grand };
+            };
+            let totalFee = 0, totalExtra = 0, totalGrand = 0;
+            installations.forEach(i => {
+                const t = installTotals(i);
+                totalFee += t.fee; totalExtra += t.extra; totalGrand += t.grand;
+            });
+
+            const ctx = document.getElementById('chartInstallation');
+            if (chartInstallation) chartInstallation.destroy();
+            chartInstallation = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Installation Charges', 'Extra Billed', 'Grand Total'],
+                    datasets: [{ data: [totalFee, totalExtra, totalGrand], backgroundColor: ['#0F52BA', '#f59e0b', '#10B981'], borderRadius: 8 }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => fmtPKR(c.raw) } } },
+                    scales: { x: { ticks: { callback: (v) => fmtPKR(v) }, grid: { color: '#eef2f7' } }, y: { grid: { display: false } } }
+                }
+            });
+        }
+
+        // 5) Inventory — stock value per item (available_stock x sale_price)
+        function renderInventoryChart() {
+            const items = safeParse('airtouch_dashboard_items') || safeParse('airtouch_store_inventory_items');
+            const isEmpty = !items || !Array.isArray(items) || items.length === 0;
+            showChartEmpty('chartInventory', 'chartInventoryEmpty', isEmpty);
+            if (isEmpty) return;
+
+            const labels = items.map(i => i.item_name || i.item_code || 'Item');
+            const values = items.map(i => (Number(i.available_stock) || 0) * (Number(i.sale_price) || 0));
+
+            const ctx = document.getElementById('chartInventory');
+            if (chartInventory) chartInventory.destroy();
+            chartInventory = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels,
+                    datasets: [{ label: 'Stock Value', data: values, backgroundColor: '#0d9488', borderRadius: 8 }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => fmtPKR(c.raw) } } },
+                    scales: { y: { ticks: { callback: (v) => fmtPKR(v) }, grid: { color: '#eef2f7' } }, x: { grid: { display: false } } }
+                }
+            });
+        }
+
+        function refreshAnalyticsCharts() {
+            renderEasyPaisaChart();
+            renderBillingChart();
+            renderExpensesChart();
+            renderInstallationChart();
+            renderInventoryChart();
+        }
+
+        // Draw charts once the page has fully loaded (and the inventory seed has run)
+        window.addEventListener('load', refreshAnalyticsCharts);
+    </script>
+</body>
+</html>

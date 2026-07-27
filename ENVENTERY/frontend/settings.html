@@ -1,0 +1,1026 @@
+<!DOCTYPE html>
+<html lang="ur" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Air Touch ERP - Settings</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <!-- xlsx-js-style: SheetJS-compatible (same global XLSX, same read/import API) but also
+       writes real cell styling (fills, fonts, borders) into the .xlsx file, which the plain
+       cdnjs 'xlsx' build cannot do — this is what makes the Export button's file look designed. -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+  <style>
+    :root {
+      --primary-blue: #0A3663;
+      --hover-blue: #0E4782;
+      --success-green: #208B3A;
+      --light-green: #2DC653;
+      --warning-orange: #D97706;
+      --danger-red: #DC2626;
+      --bg-gray: #F0F4F8;
+      --card-bg: #FFFFFF;
+      --text-dark: #1E293B;
+      --text-muted: #64748B;
+      --border-color: #CBD5E1;
+      --purple-accent: #7C3AED;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+    body { background-color: var(--bg-gray); color: var(--text-dark); display: flex; height: 100vh; overflow: hidden; }
+
+    .sidebar { width: 260px; background: var(--primary-blue); color: #ffffff; display: flex; flex-direction: column; box-shadow: 4px 0 12px rgba(0,0,0,0.15); z-index: 10; overflow-y: auto; }
+    .brand-header { padding: 16px 18px; background: rgba(0, 0, 0, 0.25); border-bottom: 4px solid var(--light-green); display: flex; align-items: center; gap: 10px; }
+    .brand-header i { font-size: 22px; color: var(--light-green); }
+    .brand-header h2 { font-size: 16px; font-weight: 800; letter-spacing: 0.5px; }
+
+    .nav-menu { padding: 12px 8px; display: flex; flex-direction: column; gap: 4px; }
+    .menu-group { display: flex; flex-direction: column; }
+    .menu-header { padding: 9px 12px; color: #FFFFFF; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: space-between; border-radius: 6px; cursor: pointer; transition: all 0.2s; }
+    .menu-header:hover { background: rgba(255, 255, 255, 0.1); }
+    .menu-header-title { display: flex; align-items: center; gap: 8px; }
+    .arrow-icon { font-size: 10px; transition: transform 0.2s; }
+
+    .tree-sub { display: none; flex-direction: column; padding-left: 20px; gap: 2px; margin-top: 2px; }
+    .menu-group.open .tree-sub { display: flex; }
+    .menu-group.open .arrow-icon { transform: rotate(90deg); }
+
+    .tree-item { padding: 6px 10px; color: #94A3B8; font-size: 11px; font-weight: 600; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+    .tree-item::before { content: '├─'; color: #475569; font-family: monospace; }
+    .tree-item:last-child::before { content: '└─'; }
+    .tree-item:hover, .tree-item.active { color: #FFFFFF; background: rgba(255, 255, 255, 0.12); }
+    .tree-item.active { color: var(--light-green); font-weight: 700; }
+
+    .menu-header.active-page { background: rgba(255, 255, 255, 0.14); color: var(--light-green); }
+
+    .main-wrapper { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+    .top-bar { background: var(--card-bg); padding: 10px 24px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; gap: 20px; }
+    .global-search { display: flex; align-items: center; background: #F1F5F9; border: 1px solid var(--border-color); border-radius: 6px; padding: 7px 14px; width: 420px; gap: 10px; }
+    .global-search input { border: none; background: transparent; outline: none; font-size: 12px; width: 100%; }
+
+    .top-right { display: flex; align-items: center; gap: 18px; }
+    .bell-icon { position: relative; cursor: pointer; font-size: 16px; color: var(--text-dark); }
+    .bell-badge { position: absolute; top: -6px; right: -8px; background: var(--danger-red); color: white; font-size: 9px; font-weight: 800; border-radius: 50%; padding: 2px 5px; }
+
+    .header-section { background: #FFFFFF; padding: 12px 24px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; }
+    .breadcrumbs { font-size: 11px; color: var(--text-muted); font-weight: 600; display: flex; align-items: center; gap: 6px; }
+    .breadcrumbs span.active { color: var(--primary-blue); font-weight: 700; }
+    .breadcrumbs span.link { cursor: pointer; }
+    .breadcrumbs span.link:hover { color: var(--primary-blue); text-decoration: underline; }
+
+    .action-toolbar { display: flex; gap: 8px; }
+    .btn { padding: 7px 12px; border-radius: 5px; font-size: 11px; font-weight: 700; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s; }
+    .btn:active { transform: scale(0.96); }
+    .btn-primary { background: var(--primary-blue); color: white; }
+    .btn-success { background: var(--success-green); color: white; }
+    .btn-purple { background: var(--purple-accent); color: white; }
+    .btn-outline { background: #F8FAFC; border: 1px solid var(--border-color); color: var(--text-dark); }
+    .btn-outline:hover { background: #E2E8F0; }
+    .btn-danger { background: var(--danger-red); color: white; }
+    .btn-danger:hover { background: #B91C1C; }
+
+    .content-body { flex: 1; padding: 16px 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
+
+    .metrics-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; flex-shrink: 0; }
+    .metric-card { background: var(--card-bg); border-radius: 6px; padding: 12px; border: 1px solid var(--border-color); display: flex; flex-direction: column; justify-content: space-between; gap: 4px; transition: transform .15s ease; }
+    .metric-card:hover { transform: translateY(-2px); }
+    .metric-card label { font-size: 9px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
+    .metric-card h3 { font-size: 16px; font-weight: 800; color: var(--primary-blue); }
+
+    /* SETTINGS TABS */
+    .settings-shell { display: flex; gap: 16px; flex: 1; min-height: 0; }
+    .settings-tabs { width: 200px; flex-shrink: 0; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 8px; display: flex; flex-direction: column; gap: 2px; height: fit-content; }
+    .settings-tab-btn { text-align: left; padding: 9px 12px; border-radius: 6px; border: none; background: transparent; color: var(--text-dark); font-size: 11px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all .15s ease; }
+    .settings-tab-btn:hover { background: #F1F5F9; }
+    .settings-tab-btn.active { background: var(--primary-blue); color: #fff; }
+    .settings-tab-btn i { width: 14px; text-align: center; }
+
+    .settings-panels { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
+    .tab-panel { display: none; flex-direction: column; gap: 16px; }
+    .tab-panel.active { display: flex; }
+
+    .panel-card { background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border-color); display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0; }
+    .panel-header { padding: 10px 14px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: #F8FAFC; gap: 10px; flex-wrap: wrap; }
+    .panel-header h3 { font-size: 12px; font-weight: 700; color: var(--primary-blue); display: flex; align-items: center; gap: 6px; }
+    .panel-body { padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 11px; }
+    thead th { background: var(--primary-blue); color: white; text-align: left; padding: 8px 10px; font-weight: 600; }
+    tbody td { padding: 8px 10px; border-bottom: 1px solid var(--border-color); vertical-align: middle; }
+    tbody tr:hover { background-color: #F1F5F9; }
+    tbody tr.removing { animation: fadeOut .2s ease forwards; }
+    @keyframes fadeOut { to { opacity: 0; } }
+
+    .badge-success { background: #DCFCE7; color: var(--success-green); padding: 2px 6px; border-radius: 10px; font-weight: 700; }
+    .badge-muted { background: #E2E8F0; color: var(--text-muted); padding: 2px 6px; border-radius: 10px; font-weight: 700; }
+    .badge-purple { background: #EDE9FE; color: var(--purple-accent); padding: 2px 6px; border-radius: 10px; font-weight: 700; }
+
+    .row-actions { display: flex; gap: 4px; }
+    .btn-icon { width: 24px; height: 24px; border-radius: 4px; border: 1px solid var(--border-color); background: white; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 10px; color: var(--text-dark); transition: background .15s ease; }
+    .btn-icon:hover { background: #E2E8F0; }
+
+    /* GENERAL FORM */
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .form-grid.full { grid-template-columns: 1fr; }
+    .field label { display: block; font-size: 10px; font-weight: 700; color: var(--text-muted); margin-bottom: 4px; }
+    .field input, .field select, .field textarea { width: 100%; padding: 8px 10px; border: 1px solid var(--border-color); border-radius: 5px; font-size: 12px; font-family: inherit; }
+    .field small { display: block; margin-top: 3px; font-size: 9px; color: var(--text-muted); }
+
+    .toggle-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 4px; border-bottom: 1px solid #F1F5F9; }
+    .toggle-row:last-child { border-bottom: none; }
+    .toggle-row .info strong { font-size: 11px; }
+    .toggle-row .info p { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+    .switch { position: relative; width: 40px; height: 22px; flex-shrink: 0; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider { position: absolute; inset: 0; background: var(--border-color); border-radius: 22px; cursor: pointer; transition: .2s; }
+    .slider::before { content: ''; position: absolute; width: 16px; height: 16px; left: 3px; top: 3px; background: white; border-radius: 50%; transition: .2s; }
+    .switch input:checked + .slider { background: var(--success-green); }
+    .switch input:checked + .slider::before { transform: translateX(18px); }
+
+    /* MODAL */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(15,26,43,.55); display: none; align-items: center; justify-content: center; z-index: 500; }
+    .modal-overlay.show { display: flex; }
+    .modal-box { background: var(--card-bg); width: 380px; max-height: 88vh; overflow-y: auto; border-radius: 8px; padding: 18px; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 20px 50px rgba(0,0,0,.3); animation: modalPop .18s ease; }
+    @keyframes modalPop { from { transform: scale(.94); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .modal-box h3 { color: var(--primary-blue); font-size: 13px; }
+    .modal-box label { font-size: 10px; font-weight: 700; color: var(--text-muted); }
+    .modal-box input, .modal-box select { padding: 6px 8px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 11px; width: 100%; font-family: inherit; }
+    .modal-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
+
+    .danger-zone { border: 1px dashed var(--danger-red); background: #FEF2F2; border-radius: 8px; padding: 14px; display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap; }
+    .danger-zone strong { color: var(--danger-red); font-size: 12px; }
+    .danger-zone p { font-size: 10px; color: var(--text-muted); margin-top: 3px; }
+
+    .toast-stack { position: fixed; bottom: 18px; right: 18px; display: flex; flex-direction: column; gap: 8px; z-index: 999; }
+    .toast { background: var(--primary-blue); color: white; padding: 10px 16px; border-radius: 6px; font-size: 11px; font-weight: 700; box-shadow: 0 8px 20px rgba(0,0,0,.25); display: flex; align-items: center; gap: 8px; animation: toastIn .25s ease; }
+    .toast.success { background: var(--success-green); }
+    .toast.danger { background: var(--danger-red); }
+    @keyframes toastIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .toast.leaving { animation: toastOut .25s ease forwards; }
+    @keyframes toastOut { to { opacity: 0; transform: translateX(20px); } }
+  </style>
+  <script src="airtouch_store.js"></script>
+</head>
+<body>
+
+  <aside class="sidebar">
+    <div class="brand-header">
+      <i class="fa-solid fa-wifi"></i>
+      <h2>AIR TOUCH ERP</h2>
+    </div>
+
+    <nav class="nav-menu">
+      <div class="menu-group">
+        <div class="menu-header" onclick="location.href='dashboard.html'">
+          <div class="menu-header-title"><i class="fa-solid fa-house"></i> 🏠 Dashboard</div>
+        </div>
+      </div>
+
+      <div class="menu-group">
+        <div class="menu-header" onclick="toggleMenu(this)">
+          <div class="menu-header-title"><i class="fa-solid fa-boxes-stacked"></i> 📦 Inventory</div>
+          <i class="fa-solid fa-chevron-right arrow-icon"></i>
+        </div>
+        <div class="tree-sub">
+          <div class="tree-item" onclick="location.href='store_inventory.html'">Store Stock</div>
+          <div class="tree-item" onclick="location.href='purchase.html'">Purchase</div>
+          <div class="tree-item" onclick="location.href='dispatch.html'">Dispatch</div>
+          <div class="tree-item" onclick="location.href='ledger.html'">Ledger</div>
+        </div>
+      </div>
+
+      <div class="menu-group">
+        <div class="menu-header" onclick="toggleMenu(this)">
+          <div class="menu-header-title"><i class="fa-solid fa-wrench"></i> 🔧 Installation</div>
+          <i class="fa-solid fa-chevron-right arrow-icon"></i>
+        </div>
+        <div class="tree-sub">
+          <div class="tree-item" onclick="location.href='installation.html'">New Installation</div>
+          <div class="tree-item" onclick="location.href='installation.html'">Installation List</div>
+          <div class="tree-item" onclick="location.href='installation.html'">Returned Material</div>
+          <div class="tree-item" onclick="location.href='installation_exchange.html'">Installation Exchange</div>
+        </div>
+      </div>
+
+      <div class="menu-group">
+        <div class="menu-header" onclick="toggleMenu(this)">
+          <div class="menu-header-title"><i class="fa-solid fa-chart-pie"></i> 📊 Reports</div>
+          <i class="fa-solid fa-chevron-right arrow-icon"></i>
+        </div>
+        <div class="tree-sub">
+          <div class="tree-item">Daily Summary</div>
+          <div class="tree-item">Monthly Report</div>
+          <div class="tree-item">City Wise Stock</div>
+        </div>
+      </div>
+
+      <div class="menu-group">
+        <div class="menu-header" onclick="location.href='employees.html'"><div class="menu-header-title"><i class="fa-solid fa-users"></i> 👨 Employees</div></div>
+      </div>
+
+      <div class="menu-group">
+        <div class="menu-header active-page" onclick="location.href='settings.html'"><div class="menu-header-title"><i class="fa-solid fa-gear"></i> ⚙ Settings</div></div>
+      </div>
+    </nav>
+  </aside>
+
+  <main class="main-wrapper">
+
+    <header class="top-bar">
+      <div class="global-search">
+        <i class="fa-solid fa-magnifying-glass" style="color:var(--text-muted);"></i>
+        <input type="text" placeholder="🔍 Search settings...">
+      </div>
+
+      <div class="top-right">
+        <div class="bell-icon" title="Notifications" id="bellBtn">
+          <i class="fa-solid fa-bell"></i>
+          <span class="bell-badge" id="bellBadge">1</span>
+        </div>
+        <div style="font-size:11px; font-weight:700; color:var(--primary-blue);">
+          <i class="fa-solid fa-user-circle"></i> Admin Profile
+        </div>
+      </div>
+    </header>
+
+    <section class="header-section">
+      <div class="breadcrumbs">
+        <span class="link" onclick="location.href='dashboard.html'">Dashboard</span> &gt;
+        <span class="active">Settings</span>
+      </div>
+
+      <div class="action-toolbar">
+        <button class="btn btn-outline" id="refreshBtn"><i class="fa-solid fa-rotate"></i> 🔄 Refresh</button>
+      </div>
+    </section>
+
+    <div class="content-body">
+
+      <section class="metrics-grid">
+        <div class="metric-card"><label>🏙️ Cities</label><h3 id="mCitiesCount">0</h3></div>
+        <div class="metric-card"><label>🏷️ Categories</label><h3 id="mCategoriesCount">0</h3></div>
+        <div class="metric-card"><label>🚚 Suppliers</label><h3 id="mSuppliersCount">0</h3></div>
+        <div class="metric-card"><label>👤 User Accounts</label><h3 id="mUsersCount">0</h3></div>
+        <div class="metric-card"><label>⚠️ Default Low-Stock Limit</label><h3 id="mDefaultMinStock" style="color:var(--warning-orange);">5</h3></div>
+      </section>
+
+      <div class="settings-shell">
+        <div class="settings-tabs">
+          <button class="settings-tab-btn active" data-tab="general"><i class="fa-solid fa-building"></i> General</button>
+          <button class="settings-tab-btn" data-tab="cities"><i class="fa-solid fa-city"></i> Cities</button>
+          <button class="settings-tab-btn" data-tab="categories"><i class="fa-solid fa-tags"></i> Categories</button>
+          <button class="settings-tab-btn" data-tab="suppliers"><i class="fa-solid fa-truck"></i> Suppliers</button>
+          <button class="settings-tab-btn" data-tab="users"><i class="fa-solid fa-user-shield"></i> Users &amp; Roles</button>
+          <button class="settings-tab-btn" data-tab="notifications"><i class="fa-solid fa-bell"></i> Notifications</button>
+          <button class="settings-tab-btn" data-tab="data"><i class="fa-solid fa-database"></i> Data &amp; Backup</button>
+        </div>
+
+        <div class="settings-panels">
+
+          <!-- GENERAL -->
+          <div class="tab-panel active" id="panel-general">
+            <section class="panel-card">
+              <div class="panel-header"><h3><i class="fa-solid fa-building"></i> Company Information</h3></div>
+              <div class="panel-body">
+                <div class="form-grid">
+                  <div class="field"><label>Company Name</label><input type="text" id="gCompanyName"></div>
+                  <div class="field"><label>Support Phone</label><input type="text" id="gPhone"></div>
+                  <div class="field full" style="grid-column: 1 / -1;"><label>Office Address</label><input type="text" id="gAddress"></div>
+                  <div class="field"><label>Currency Symbol</label><input type="text" id="gCurrency" maxlength="5"></div>
+                  <div class="field"><label>Date Format</label>
+                    <select id="gDateFormat">
+                      <option value="yyyy-mm-dd">YYYY-MM-DD (2026-07-22)</option>
+                      <option value="dd-mm-yyyy">DD-MM-YYYY (22-07-2026)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section class="panel-card">
+              <div class="panel-header"><h3><i class="fa-solid fa-boxes-stacked"></i> Inventory Defaults</h3></div>
+              <div class="panel-body">
+                <div class="form-grid">
+                  <div class="field">
+                    <label>Default Low-Stock Limit</label>
+                    <input type="number" id="gMinStock" min="0">
+                    <small>Used as min_stock_limit when a new item doesn't set its own.</small>
+                  </div>
+                  <div class="field">
+                    <label>Default Item Unit</label>
+                    <input type="text" id="gDefaultUnit">
+                    <small>Matches items.unit, e.g. Pcs, Meter, Box.</small>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <div style="display:flex; justify-content:flex-end;">
+              <button class="btn btn-purple" id="saveGeneralBtn"><i class="fa-solid fa-check"></i> Save General Settings</button>
+            </div>
+          </div>
+
+          <!-- CITIES -->
+          <div class="tab-panel" id="panel-cities">
+            <section class="panel-card">
+              <div class="panel-header">
+                <h3><i class="fa-solid fa-city"></i> Cities / Regional Locations</h3>
+                <button class="btn btn-purple" id="addCityBtn"><i class="fa-solid fa-plus"></i> Add City</button>
+              </div>
+              <table>
+                <thead><tr><th style="width:15%;">Code</th><th>City Name</th><th style="width:15%;">Actions</th></tr></thead>
+                <tbody id="citiesBody"></tbody>
+              </table>
+            </section>
+          </div>
+
+          <!-- CATEGORIES -->
+          <div class="tab-panel" id="panel-categories">
+            <section class="panel-card">
+              <div class="panel-header">
+                <h3><i class="fa-solid fa-tags"></i> Item Categories</h3>
+                <button class="btn btn-purple" id="addCategoryBtn"><i class="fa-solid fa-plus"></i> Add Category</button>
+              </div>
+              <table>
+                <thead><tr><th>Category Name</th><th style="width:20%;">Code Prefix</th><th style="width:15%;">Actions</th></tr></thead>
+                <tbody id="categoriesBody"></tbody>
+              </table>
+            </section>
+          </div>
+
+          <!-- SUPPLIERS -->
+          <div class="tab-panel" id="panel-suppliers">
+            <section class="panel-card">
+              <div class="panel-header">
+                <h3><i class="fa-solid fa-truck"></i> Suppliers</h3>
+                <button class="btn btn-purple" id="addSupplierBtn"><i class="fa-solid fa-plus"></i> Add Supplier</button>
+              </div>
+              <table>
+                <thead><tr><th>Supplier Name</th><th>Contact Person</th><th>Phone</th><th>Address</th><th style="width:12%;">Actions</th></tr></thead>
+                <tbody id="suppliersBody"></tbody>
+              </table>
+            </section>
+          </div>
+
+          <!-- USERS -->
+          <div class="tab-panel" id="panel-users">
+            <section class="panel-card">
+              <div class="panel-header">
+                <h3><i class="fa-solid fa-user-shield"></i> User Accounts</h3>
+                <button class="btn btn-purple" id="addUserBtn"><i class="fa-solid fa-plus"></i> Add User</button>
+              </div>
+              <table>
+                <thead><tr><th>Username</th><th>Role</th><th>Linked Employee</th><th style="width:12%;">Actions</th></tr></thead>
+                <tbody id="usersBody"></tbody>
+              </table>
+            </section>
+          </div>
+
+          <!-- NOTIFICATIONS -->
+          <div class="tab-panel" id="panel-notifications">
+            <section class="panel-card">
+              <div class="panel-header"><h3><i class="fa-solid fa-bell"></i> Alert Preferences</h3></div>
+              <div class="panel-body" style="gap:0;">
+                <div class="toggle-row">
+                  <div class="info"><strong>Low-stock alerts</strong><p>Bell notification when an item's available_stock drops to/below its min_stock_limit.</p></div>
+                  <label class="switch"><input type="checkbox" id="notifyLowStock" checked><span class="slider"></span></label>
+                </div>
+                <div class="toggle-row">
+                  <div class="info"><strong>Dispatch confirmations</strong><p>Toast + bell alert whenever a dispatch is posted to a city.</p></div>
+                  <label class="switch"><input type="checkbox" id="notifyDispatch" checked><span class="slider"></span></label>
+                </div>
+                <div class="toggle-row">
+                  <div class="info"><strong>Installation confirmations</strong><p>Toast + bell alert whenever a customer installation is recorded.</p></div>
+                  <label class="switch"><input type="checkbox" id="notifyInstall" checked><span class="slider"></span></label>
+                </div>
+                <div class="toggle-row">
+                  <div class="info"><strong>Daily summary email</strong><p>Send a daily recap of purchases, dispatches, and installs (needs SMTP setup once there's a backend).</p></div>
+                  <label class="switch"><input type="checkbox" id="notifyEmail"><span class="slider"></span></label>
+                </div>
+              </div>
+            </section>
+            <div style="display:flex; justify-content:flex-end;">
+              <button class="btn btn-purple" id="saveNotifyBtn"><i class="fa-solid fa-check"></i> Save Notification Preferences</button>
+            </div>
+          </div>
+
+          <!-- DATA & BACKUP -->
+          <div class="tab-panel" id="panel-data">
+            <section class="panel-card">
+              <div class="panel-header"><h3><i class="fa-solid fa-database"></i> Export &amp; Backup</h3></div>
+              <div class="panel-body">
+                <p style="font-size:11px; color:var(--text-muted);">Every page (Store Stock, Purchase, Dispatch, Ledger, Employees) already has its own Export Excel button. Use this when you want everything at once.</p>
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                  <button class="btn btn-outline" id="exportAllBtn"><i class="fa-solid fa-file-export"></i> Export Master Data (Cities, Categories, Suppliers) as Excel</button>
+                </div>
+              </div>
+            </section>
+
+            <section class="panel-card">
+              <div class="panel-header"><h3><i class="fa-solid fa-triangle-exclamation" style="color:var(--danger-red);"></i> Danger Zone</h3></div>
+              <div class="panel-body">
+                <div class="danger-zone">
+                  <div>
+                    <strong>Reset all settings on this device</strong>
+                    <p>Clears everything on this Settings page (cities, categories, suppliers, users, preferences) back to the seeded defaults. Does not touch stock, dispatches, or installations.</p>
+                  </div>
+                  <button class="btn btn-danger" id="resetSettingsBtn"><i class="fa-solid fa-arrow-rotate-left"></i> Reset to Defaults</button>
+                </div>
+              </div>
+            </section>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- CITY MODAL -->
+  <div class="modal-overlay" id="cityModal">
+    <div class="modal-box">
+      <h3 id="cityModalTitle">Add City</h3>
+      <label>City Code</label>
+      <input type="text" id="cCode" placeholder="e.g. BTK" style="text-transform:uppercase;">
+      <label>City Name</label>
+      <input type="text" id="cName" placeholder="e.g. Bahria Town">
+      <div class="modal-actions">
+        <button class="btn btn-outline" id="cityCancelBtn">Cancel</button>
+        <button class="btn btn-purple" id="citySaveBtn">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CATEGORY MODAL -->
+  <div class="modal-overlay" id="categoryModal">
+    <div class="modal-box">
+      <h3 id="categoryModalTitle">Add Category</h3>
+      <label>Category Name</label>
+      <input type="text" id="catName" placeholder="e.g. Modem">
+      <label>Code Prefix</label>
+      <input type="text" id="catPrefix" placeholder="e.g. ONU" style="text-transform:uppercase;" maxlength="5">
+      <div class="modal-actions">
+        <button class="btn btn-outline" id="categoryCancelBtn">Cancel</button>
+        <button class="btn btn-purple" id="categorySaveBtn">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUPPLIER MODAL -->
+  <div class="modal-overlay" id="supplierModal">
+    <div class="modal-box">
+      <h3 id="supplierModalTitle">Add Supplier</h3>
+      <label>Supplier Name</label>
+      <input type="text" id="supName" placeholder="e.g. FiberHome Vendor">
+      <div class="modal-row">
+        <div><label>Contact Person</label><input type="text" id="supContact"></div>
+        <div><label>Phone</label><input type="text" id="supPhone"></div>
+      </div>
+      <label>Address</label>
+      <input type="text" id="supAddress">
+      <div class="modal-actions">
+        <button class="btn btn-outline" id="supplierCancelBtn">Cancel</button>
+        <button class="btn btn-purple" id="supplierSaveBtn">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- USER MODAL -->
+  <div class="modal-overlay" id="userModal">
+    <div class="modal-box">
+      <h3 id="userModalTitle">Add User</h3>
+      <label>Username</label>
+      <input type="text" id="usrUsername" placeholder="e.g. bilal">
+      <label>Role</label>
+      <select id="usrRole">
+        <option value="Admin">Admin</option>
+        <option value="Manager">Manager</option>
+        <option value="Field_Tech">Field_Tech</option>
+        <option value="Staff">Staff</option>
+      </select>
+      <label>Linked Employee</label>
+      <select id="usrEmployee"></select>
+      <label>Password</label>
+      <input type="password" id="usrPassword" placeholder="Set a temporary password">
+      <small style="font-size:9px; color:var(--text-muted);">Stored as users.password_hash once there's a backend — this mock just keeps it in memory.</small>
+      <div class="modal-actions">
+        <button class="btn btn-outline" id="userCancelBtn">Cancel</button>
+        <button class="btn btn-purple" id="userSaveBtn">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-stack" id="toastStack"></div>
+
+  <script>
+    function toggleMenu(element) { element.parentElement.classList.toggle('open'); }
+
+    /* ---------------- MOCK DATA (mirrors cities / categories / suppliers / users / employees tables) ---------------- */
+    let cities = [
+      { code: 'BTK', name: 'Bahria Town' }, { code: 'DHR', name: 'Dhamial' }, { code: 'TOK', name: 'Tokar' },
+      { code: 'BDN', name: 'Bandi' }, { code: 'CKD', name: 'Chakwal Road' }, { code: 'OCH', name: 'Ochali' },
+      { code: 'SKT', name: 'Saket' }, { code: 'THA', name: 'Thanda Pani' }, { code: 'ALD', name: 'Aldrich Colony' },
+      { code: 'TLS', name: 'Talwara' }, { code: 'MTA', name: 'Mattani' }, { code: 'SWT', name: 'Swat' },
+      { code: 'TMG', name: 'Tarnama' }, { code: 'KKL', name: 'Kakul' }, { code: 'CHARBAGH', name: 'Charbagh' },
+      { code: 'KOT', name: 'Kot' }, { code: 'SHM', name: 'Shamozai' }, { code: 'GHL', name: 'Ghalanai' },
+    ];
+
+    let categories = [
+      { name: 'Modem', prefix: 'ONU' }, { name: 'Router', prefix: 'RTR' },
+      { name: 'Cable', prefix: 'CAB' }, { name: 'Adapter', prefix: 'ADP' },
+    ];
+
+    let suppliers = [
+      { id: 1, name: 'FiberHome Vendor', contact: 'Waqas Anjum', phone: '0300-1112233', address: 'Hafeez Center, Lahore' },
+      { id: 2, name: 'Huawei Direct', contact: 'Sana Iqbal', phone: '0321-4455667', address: 'I.I. Chundrigar Road, Karachi' },
+      { id: 3, name: 'Local Vendor', contact: 'Kashif Bhatti', phone: '0333-7788990', address: 'Saddar, Rawalpindi' },
+    ];
+
+    // Mirrors employees.html so "Linked Employee" always matches real staff
+    const employeesForUsers = [
+      { id: 1, name: 'Bilal Ahmed (EMP-001)' }, { id: 2, name: 'Ali Raza (EMP-002)' }, { id: 3, name: 'Asad Khan (EMP-003)' },
+    ];
+
+    let users = [
+      { id: 1, username: 'bilal', role: 'Admin', employee_id: 1 },
+      { id: 2, username: 'ali', role: 'Field_Tech', employee_id: 2 },
+      { id: 3, username: 'asad', role: 'Staff', employee_id: 3 },
+    ];
+
+    let generalSettings = {
+      companyName: 'Air Touch Internet Services',
+      phone: '0300-0000000',
+      address: 'Main Bazaar, Bahria Town, Rawalpindi',
+      currency: 'Rs',
+      dateFormat: 'yyyy-mm-dd',
+      minStock: 5,
+      defaultUnit: 'Pcs',
+    };
+
+    let notifySettings = { lowStock: true, dispatch: true, install: true, email: false };
+
+    /* ---------------- RESTORE FROM localStorage (so a refresh doesn't reset settings) ---------------- */
+    const SETTINGS_STORAGE_KEY = 'airtouch_settings_data';
+    (function loadSavedSettings(){
+      try {
+        const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
+        if (!raw) return;
+        const saved = JSON.parse(raw);
+        if (Array.isArray(saved.cities)) cities = saved.cities;
+        if (Array.isArray(saved.categories)) categories = saved.categories;
+        if (Array.isArray(saved.suppliers)) suppliers = saved.suppliers;
+        if (Array.isArray(saved.users)) users = saved.users;
+        if (saved.generalSettings && typeof saved.generalSettings === 'object') generalSettings = saved.generalSettings;
+        if (saved.notifySettings && typeof saved.notifySettings === 'object') notifySettings = saved.notifySettings;
+      } catch (e) { /* ignore corrupted storage, keep sample data */ }
+    })();
+    function persistSettings(){
+      try {
+        localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify({ cities, categories, suppliers, users, generalSettings, notifySettings }));
+      } catch (e) { /* storage full/unavailable */ }
+    }
+
+    let citySeq = 0, supplierSeq = suppliers.reduce((max, s) => Math.max(max, s.id || 0), 0), userSeq = users.reduce((max, u) => Math.max(max, u.id || 0), 0);
+
+    /* ---------------- TABS ---------------- */
+    document.querySelectorAll('.settings-tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.settings-tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+      });
+    });
+
+    /* ---------------- METRICS ---------------- */
+    function updateMetrics(){
+      document.getElementById('mCitiesCount').textContent = cities.length;
+      document.getElementById('mCategoriesCount').textContent = categories.length;
+      document.getElementById('mSuppliersCount').textContent = suppliers.length;
+      document.getElementById('mUsersCount').textContent = users.length;
+      document.getElementById('mDefaultMinStock').textContent = generalSettings.minStock;
+    }
+
+    /* ---------------- GENERAL TAB ---------------- */
+    function loadGeneralForm(){
+      document.getElementById('gCompanyName').value = generalSettings.companyName;
+      document.getElementById('gPhone').value = generalSettings.phone;
+      document.getElementById('gAddress').value = generalSettings.address;
+      document.getElementById('gCurrency').value = generalSettings.currency;
+      document.getElementById('gDateFormat').value = generalSettings.dateFormat;
+      document.getElementById('gMinStock').value = generalSettings.minStock;
+      document.getElementById('gDefaultUnit').value = generalSettings.defaultUnit;
+    }
+    document.getElementById('saveGeneralBtn').onclick = () => {
+      generalSettings = {
+        companyName: document.getElementById('gCompanyName').value.trim() || generalSettings.companyName,
+        phone: document.getElementById('gPhone').value.trim(),
+        address: document.getElementById('gAddress').value.trim(),
+        currency: document.getElementById('gCurrency').value.trim() || 'Rs',
+        dateFormat: document.getElementById('gDateFormat').value,
+        minStock: Number(document.getElementById('gMinStock').value) || 0,
+        defaultUnit: document.getElementById('gDefaultUnit').value.trim() || 'Pcs',
+      };
+      persistSettings();
+      updateMetrics();
+      showToast('General settings saved', 'success');
+    };
+
+    /* ---------------- CITIES TAB ---------------- */
+    function renderCities(){
+      persistSettings();
+      const body = document.getElementById('citiesBody');
+      body.innerHTML = cities.map((c, idx) => `
+        <tr data-idx="${idx}">
+          <td><code>${c.code}</code></td>
+          <td>${c.name}</td>
+          <td>
+            <div class="row-actions">
+              <button class="btn-icon" style="color:var(--primary-blue)" title="Edit" data-action="edit"><i class="fa-solid fa-pen"></i></button>
+              <button class="btn-icon" style="color:var(--danger-red)" title="Delete" data-action="delete"><i class="fa-solid fa-trash"></i></button>
+            </div>
+          </td>
+        </tr>
+      `).join('') || `<tr><td colspan="3" style="text-align:center; color:var(--text-muted); padding:16px;">No cities yet</td></tr>`;
+
+      body.querySelectorAll('button[data-action]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const idx = Number(btn.closest('tr').dataset.idx);
+          if (btn.dataset.action === 'edit') openCityModal(idx);
+          else deleteCity(idx);
+        });
+      });
+      updateMetrics();
+    }
+
+    let editingCityIdx = null;
+    function openCityModal(idx){
+      editingCityIdx = idx ?? null;
+      const isEdit = idx !== null && idx !== undefined;
+      document.getElementById('cityModalTitle').textContent = isEdit ? 'Edit City' : 'Add City';
+      document.getElementById('cCode').value = isEdit ? cities[idx].code : '';
+      document.getElementById('cCode').disabled = isEdit; // code is the primary reference used everywhere else
+      document.getElementById('cName').value = isEdit ? cities[idx].name : '';
+      document.getElementById('cityModal').classList.add('show');
+    }
+    document.getElementById('addCityBtn').onclick = () => openCityModal(null);
+    document.getElementById('cityCancelBtn').onclick = () => document.getElementById('cityModal').classList.remove('show');
+    document.getElementById('cityModal').addEventListener('click', e => { if (e.target.id === 'cityModal') e.target.classList.remove('show'); });
+    document.getElementById('citySaveBtn').onclick = () => {
+      const code = document.getElementById('cCode').value.trim().toUpperCase();
+      const name = document.getElementById('cName').value.trim();
+      if (!code || !name){ showToast('City code and name are both required', 'danger'); return; }
+      if (editingCityIdx === null){
+        if (cities.some(c => c.code === code)){ showToast(`City code ${code} already exists`, 'danger'); return; }
+        cities.push({ code, name });
+        showToast(`${code} added`, 'success');
+      } else {
+        cities[editingCityIdx].name = name;
+        showToast(`${code} updated`, 'success');
+      }
+      document.getElementById('cityModal').classList.remove('show');
+      renderCities();
+    };
+    function deleteCity(idx){
+      const c = cities[idx];
+      if (!confirm(`Delete city ${c.code} — ${c.name}? Any employee/customer/dispatch already tied to this code will keep referencing it.`)) return;
+      cities.splice(idx, 1);
+      renderCities();
+      showToast(`${c.code} deleted`, 'danger');
+    }
+
+    /* ---------------- CATEGORIES TAB ---------------- */
+    function renderCategories(){
+      persistSettings();
+      const body = document.getElementById('categoriesBody');
+      body.innerHTML = categories.map((c, idx) => `
+        <tr data-idx="${idx}">
+          <td>${c.name}</td>
+          <td><span class="badge-purple">${c.prefix}</span></td>
+          <td>
+            <div class="row-actions">
+              <button class="btn-icon" style="color:var(--primary-blue)" title="Edit" data-action="edit"><i class="fa-solid fa-pen"></i></button>
+              <button class="btn-icon" style="color:var(--danger-red)" title="Delete" data-action="delete"><i class="fa-solid fa-trash"></i></button>
+            </div>
+          </td>
+        </tr>
+      `).join('') || `<tr><td colspan="3" style="text-align:center; color:var(--text-muted); padding:16px;">No categories yet</td></tr>`;
+
+      body.querySelectorAll('button[data-action]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const idx = Number(btn.closest('tr').dataset.idx);
+          if (btn.dataset.action === 'edit') openCategoryModal(idx);
+          else deleteCategory(idx);
+        });
+      });
+      updateMetrics();
+    }
+
+    let editingCategoryIdx = null;
+    function openCategoryModal(idx){
+      editingCategoryIdx = idx ?? null;
+      const isEdit = idx !== null && idx !== undefined;
+      document.getElementById('categoryModalTitle').textContent = isEdit ? 'Edit Category' : 'Add Category';
+      document.getElementById('catName').value = isEdit ? categories[idx].name : '';
+      document.getElementById('catPrefix').value = isEdit ? categories[idx].prefix : '';
+      document.getElementById('categoryModal').classList.add('show');
+    }
+    document.getElementById('addCategoryBtn').onclick = () => openCategoryModal(null);
+    document.getElementById('categoryCancelBtn').onclick = () => document.getElementById('categoryModal').classList.remove('show');
+    document.getElementById('categoryModal').addEventListener('click', e => { if (e.target.id === 'categoryModal') e.target.classList.remove('show'); });
+    document.getElementById('categorySaveBtn').onclick = () => {
+      const name = document.getElementById('catName').value.trim();
+      const prefix = document.getElementById('catPrefix').value.trim().toUpperCase();
+      if (!name || !prefix){ showToast('Category name and code prefix are both required', 'danger'); return; }
+      if (editingCategoryIdx === null){
+        if (categories.some(c => c.prefix === prefix)){ showToast(`Prefix ${prefix} already exists`, 'danger'); return; }
+        categories.push({ name, prefix });
+        showToast(`${name} added`, 'success');
+      } else {
+        categories[editingCategoryIdx] = { name, prefix };
+        showToast(`${name} updated`, 'success');
+      }
+      document.getElementById('categoryModal').classList.remove('show');
+      renderCategories();
+    };
+    function deleteCategory(idx){
+      const c = categories[idx];
+      if (!confirm(`Delete category "${c.name}" (${c.prefix})? Items already using this category will keep referencing it.`)) return;
+      categories.splice(idx, 1);
+      renderCategories();
+      showToast(`${c.name} deleted`, 'danger');
+    }
+
+    /* ---------------- SUPPLIERS TAB ---------------- */
+    function renderSuppliers(){
+      persistSettings();
+      const body = document.getElementById('suppliersBody');
+      body.innerHTML = suppliers.map(s => `
+        <tr data-id="${s.id}">
+          <td><strong>${s.name}</strong></td>
+          <td>${s.contact || '—'}</td>
+          <td>${s.phone || '—'}</td>
+          <td style="color:var(--text-muted);">${s.address || '—'}</td>
+          <td>
+            <div class="row-actions">
+              <button class="btn-icon" style="color:var(--primary-blue)" title="Edit" data-action="edit"><i class="fa-solid fa-pen"></i></button>
+              <button class="btn-icon" style="color:var(--danger-red)" title="Delete" data-action="delete"><i class="fa-solid fa-trash"></i></button>
+            </div>
+          </td>
+        </tr>
+      `).join('') || `<tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:16px;">No suppliers yet</td></tr>`;
+
+      body.querySelectorAll('button[data-action]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = Number(btn.closest('tr').dataset.id);
+          if (btn.dataset.action === 'edit') openSupplierModal(id);
+          else deleteSupplier(id);
+        });
+      });
+      updateMetrics();
+    }
+
+    let editingSupplierId = null;
+    function openSupplierModal(id){
+      editingSupplierId = id ?? null;
+      const s = id ? suppliers.find(x => x.id === id) : null;
+      document.getElementById('supplierModalTitle').textContent = s ? 'Edit Supplier' : 'Add Supplier';
+      document.getElementById('supName').value = s ? s.name : '';
+      document.getElementById('supContact').value = s ? s.contact : '';
+      document.getElementById('supPhone').value = s ? s.phone : '';
+      document.getElementById('supAddress').value = s ? s.address : '';
+      document.getElementById('supplierModal').classList.add('show');
+    }
+    document.getElementById('addSupplierBtn').onclick = () => openSupplierModal(null);
+    document.getElementById('supplierCancelBtn').onclick = () => document.getElementById('supplierModal').classList.remove('show');
+    document.getElementById('supplierModal').addEventListener('click', e => { if (e.target.id === 'supplierModal') e.target.classList.remove('show'); });
+    document.getElementById('supplierSaveBtn').onclick = () => {
+      const name = document.getElementById('supName').value.trim();
+      if (!name){ showToast('Supplier name is required', 'danger'); return; }
+      const data = {
+        name,
+        contact: document.getElementById('supContact').value.trim(),
+        phone: document.getElementById('supPhone').value.trim(),
+        address: document.getElementById('supAddress').value.trim(),
+      };
+      if (editingSupplierId === null){
+        suppliers.push({ id: ++supplierSeq, ...data });
+        showToast(`${name} added`, 'success');
+      } else {
+        Object.assign(suppliers.find(x => x.id === editingSupplierId), data);
+        showToast(`${name} updated`, 'success');
+      }
+      document.getElementById('supplierModal').classList.remove('show');
+      renderSuppliers();
+    };
+    function deleteSupplier(id){
+      const s = suppliers.find(x => x.id === id);
+      if (!confirm(`Delete supplier "${s.name}"? Past purchase invoices will keep this supplier's name in their history.`)) return;
+      suppliers = suppliers.filter(x => x.id !== id);
+      renderSuppliers();
+      showToast(`${s.name} deleted`, 'danger');
+    }
+
+    /* ---------------- USERS TAB ---------------- */
+    function employeeNameForUser(id){ const e = employeesForUsers.find(e => e.id === id); return e ? e.name : '—'; }
+    function renderUsers(){
+      persistSettings();
+      const body = document.getElementById('usersBody');
+      body.innerHTML = users.map(u => `
+        <tr data-id="${u.id}">
+          <td><strong>${u.username}</strong></td>
+          <td><span class="badge-success">${u.role}</span></td>
+          <td>${employeeNameForUser(u.employee_id)}</td>
+          <td>
+            <div class="row-actions">
+              <button class="btn-icon" style="color:var(--primary-blue)" title="Edit" data-action="edit"><i class="fa-solid fa-pen"></i></button>
+              <button class="btn-icon" style="color:var(--danger-red)" title="Delete" data-action="delete"><i class="fa-solid fa-trash"></i></button>
+            </div>
+          </td>
+        </tr>
+      `).join('') || `<tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding:16px;">No user accounts yet</td></tr>`;
+
+      body.querySelectorAll('button[data-action]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = Number(btn.closest('tr').dataset.id);
+          if (btn.dataset.action === 'edit') openUserModal(id);
+          else deleteUser(id);
+        });
+      });
+      updateMetrics();
+    }
+
+    let editingUserId = null;
+    function openUserModal(id){
+      editingUserId = id ?? null;
+      const u = id ? users.find(x => x.id === id) : null;
+      document.getElementById('userModalTitle').textContent = u ? 'Edit User' : 'Add User';
+      document.getElementById('usrEmployee').innerHTML =
+        `<option value="">— None —</option>` +
+        employeesForUsers.map(e => `<option value="${e.id}" ${u && u.employee_id === e.id ? 'selected' : ''}>${e.name}</option>`).join('');
+      document.getElementById('usrUsername').value = u ? u.username : '';
+      document.getElementById('usrUsername').disabled = !!u;
+      document.getElementById('usrRole').value = u ? u.role : 'Staff';
+      document.getElementById('usrPassword').value = '';
+      document.getElementById('userModal').classList.add('show');
+    }
+    document.getElementById('addUserBtn').onclick = () => openUserModal(null);
+    document.getElementById('userCancelBtn').onclick = () => document.getElementById('userModal').classList.remove('show');
+    document.getElementById('userModal').addEventListener('click', e => { if (e.target.id === 'userModal') e.target.classList.remove('show'); });
+    document.getElementById('userSaveBtn').onclick = () => {
+      const username = document.getElementById('usrUsername').value.trim();
+      const role = document.getElementById('usrRole').value;
+      const employee_id = Number(document.getElementById('usrEmployee').value) || null;
+      if (!username){ showToast('Username is required', 'danger'); return; }
+      if (editingUserId === null){
+        if (users.some(u => u.username === username)){ showToast(`Username "${username}" already exists`, 'danger'); return; }
+        users.push({ id: ++userSeq, username, role, employee_id });
+        showToast(`${username} added`, 'success');
+      } else {
+        const u = users.find(x => x.id === editingUserId);
+        Object.assign(u, { role, employee_id });
+        showToast(`${username} updated`, 'success');
+      }
+      document.getElementById('userModal').classList.remove('show');
+      renderUsers();
+    };
+    function deleteUser(id){
+      const u = users.find(x => x.id === id);
+      if (!confirm(`Delete user account "${u.username}"?`)) return;
+      users = users.filter(x => x.id !== id);
+      renderUsers();
+      showToast(`${u.username} deleted`, 'danger');
+    }
+
+    /* ---------------- NOTIFICATIONS TAB ---------------- */
+    function loadNotifyForm(){
+      document.getElementById('notifyLowStock').checked = notifySettings.lowStock;
+      document.getElementById('notifyDispatch').checked = notifySettings.dispatch;
+      document.getElementById('notifyInstall').checked = notifySettings.install;
+      document.getElementById('notifyEmail').checked = notifySettings.email;
+    }
+    document.getElementById('saveNotifyBtn').onclick = () => {
+      notifySettings = {
+        lowStock: document.getElementById('notifyLowStock').checked,
+        dispatch: document.getElementById('notifyDispatch').checked,
+        install: document.getElementById('notifyInstall').checked,
+        email: document.getElementById('notifyEmail').checked,
+      };
+      persistSettings();
+      showToast('Notification preferences saved', 'success');
+    };
+
+    /* ---------------- DATA & BACKUP TAB (styled .xlsx — branded banner + colored header on every sheet) ---------------- */
+    document.getElementById('exportAllBtn').onclick = () => {
+      const today = new Date().toISOString().slice(0, 10);
+
+      // Brand palette pulled from this page's own CSS variables, so the exported
+      // file visually matches the app instead of looking like a generic dump.
+      const NAVY = '146C2E', WHITE = 'FFFFFF', TEXT_DARK = '1E293B', BORDER = 'CBD5E1', BAND = 'F0F4F8';
+      const thinBorder = { style: 'thin', color: { rgb: BORDER } };
+      const borderAll = { top: thinBorder, bottom: thinBorder, left: thinBorder, right: thinBorder };
+      const titleStyle = { font: { name: 'Calibri', sz: 15, bold: true, color: { rgb: WHITE } }, fill: { fgColor: { rgb: NAVY } }, alignment: { horizontal: 'center', vertical: 'center' } };
+      const subtitleStyle = { font: { name: 'Calibri', sz: 10, italic: true, color: { rgb: '64748B' } }, alignment: { horizontal: 'center' } };
+      const headerStyle = { font: { name: 'Calibri', sz: 11, bold: true, color: { rgb: WHITE } }, fill: { fgColor: { rgb: NAVY } }, alignment: { horizontal: 'center', vertical: 'center' }, border: borderAll };
+      const rowStyle = (bandFill, leftAlign) => ({
+        font: { name: 'Calibri', sz: 10.5, color: { rgb: TEXT_DARK } },
+        fill: { fgColor: { rgb: bandFill ? BAND : WHITE } },
+        alignment: { horizontal: leftAlign ? 'left' : 'center', vertical: 'center' },
+        border: borderAll,
+      });
+
+      function buildSheet(title, count, headers, dataRows, colWidths, leftAlignCols) {
+        const cols = headers.length;
+        const aoa = [
+          [title, ...Array(cols - 1).fill('')],
+          [`Generated on ${today}  •  ${count} records`, ...Array(cols - 1).fill('')],
+          headers,
+          ...dataRows,
+        ];
+        const ws = XLSX.utils.aoa_to_sheet(aoa);
+        ws['!cols'] = colWidths.map(w => ({ wch: w }));
+        ws['!rows'] = [{hpt:24},{hpt:15}];
+        ws['!merges'] = [
+          { s: { r: 0, c: 0 }, e: { r: 0, c: cols - 1 } },
+          { s: { r: 1, c: 0 }, e: { r: 1, c: cols - 1 } },
+        ];
+        ws['!freeze'] = { xSplit: 0, ySplit: 3 };
+        for (let c = 0; c < cols; c++) {
+          const t = XLSX.utils.encode_cell({ r: 0, c }); if (ws[t]) ws[t].s = titleStyle;
+          const s = XLSX.utils.encode_cell({ r: 1, c }); if (ws[s]) ws[s].s = subtitleStyle;
+          const h = XLSX.utils.encode_cell({ r: 2, c }); if (ws[h]) ws[h].s = headerStyle;
+        }
+        dataRows.forEach((row, idx) => {
+          for (let c = 0; c < cols; c++) {
+            const ref = XLSX.utils.encode_cell({ r: 3 + idx, c });
+            if (ws[ref]) ws[ref].s = rowStyle(idx % 2 === 1, leftAlignCols.includes(c));
+          }
+        });
+        return ws;
+      }
+
+      const workbook = XLSX.utils.book_new();
+
+      const citiesSheet = buildSheet(
+        'Air Touch Enterprise — Cities', cities.length, ['City Code', 'City Name'],
+        cities.map(c => [c.code, c.name]), [12, 22], [1]
+      );
+      XLSX.utils.book_append_sheet(workbook, citiesSheet, 'Cities');
+
+      const categoriesSheet = buildSheet(
+        'Air Touch Enterprise — Categories', categories.length, ['Category Name', 'Code Prefix'],
+        categories.map(c => [c.name, c.prefix]), [22, 14], [0]
+      );
+      XLSX.utils.book_append_sheet(workbook, categoriesSheet, 'Categories');
+
+      const suppliersSheet = buildSheet(
+        'Air Touch Enterprise — Suppliers', suppliers.length, ['Supplier Name', 'Contact Person', 'Phone', 'Address'],
+        suppliers.map(s => [s.name, s.contact, s.phone, s.address]), [22, 18, 16, 30], [0, 1, 3]
+      );
+      XLSX.utils.book_append_sheet(workbook, suppliersSheet, 'Suppliers');
+
+      XLSX.writeFile(workbook, `airtouch_master_data_${today}.xlsx`);
+      showToast('Master data exported as a designed Excel (.xlsx)', 'success');
+    };
+
+    document.getElementById('resetSettingsBtn').onclick = () => {
+      if (!confirm('Reset ALL settings on this device back to seeded defaults? This cannot be undone.')) return;
+      try { localStorage.removeItem(SETTINGS_STORAGE_KEY); } catch (e) {}
+      location.reload();
+    };
+
+    /* ---------------- TOOLBAR ---------------- */
+    document.getElementById('refreshBtn').onclick = () => {
+      renderCities(); renderCategories(); renderSuppliers(); renderUsers();
+      loadGeneralForm(); loadNotifyForm();
+      showToast('Settings refreshed', 'success');
+    };
+
+    /* ---------------- NOTIFICATIONS BELL ---------------- */
+    document.getElementById('bellBtn').onclick = () => {
+      document.getElementById('bellBadge').style.display = 'none';
+      showToast('1 low-stock item needs attention', '');
+    };
+
+    /* ---------------- TOASTS ---------------- */
+    function showToast(msg, kind){
+      const stack = document.getElementById('toastStack');
+      const t = document.createElement('div');
+      t.className = `toast ${kind||''}`;
+      t.innerHTML = `<i class="fa-solid fa-circle-check"></i> ${msg}`;
+      stack.appendChild(t);
+      setTimeout(() => { t.classList.add('leaving'); setTimeout(() => t.remove(), 250); }, 2600);
+    }
+
+    /* ---------------- INIT ---------------- */
+    loadGeneralForm();
+    loadNotifyForm();
+    renderCities();
+    renderCategories();
+    renderSuppliers();
+    renderUsers();
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="ur" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Air Touch ERP - Employees</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <!-- xlsx-js-style: SheetJS-compatible (same global XLSX, same read/import API) but also
+       writes real cell styling (fills, fonts, borders) into the .xlsx file, which the plain
+       cdnjs 'xlsx' build cannot do — this is what makes the Export button's file look designed. -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+  <style>
+    :root {
+      --primary-blue: #0A3663;
+      --hover-blue: #0E4782;
+      --success-green: #208B3A;
+      --light-green: #2DC653;
+      --warning-orange: #D97706;
+      --danger-red: #DC2626;
+      --bg-gray: #F0F4F8;
+      --card-bg: #FFFFFF;
+      --text-dark: #1E293B;
+      --text-muted: #64748B;
+      --border-color: #CBD5E1;
+      --purple-accent: #7C3AED;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+    body { background-color: var(--bg-gray); color: var(--text-dark); display: flex; height: 100vh; overflow: hidden; }
+
+    .sidebar { width: 260px; background: var(--primary-blue); color: #ffffff; display: flex; flex-direction: column; box-shadow: 4px 0 12px rgba(0,0,0,0.15); z-index: 10; overflow-y: auto; }
+    .brand-header { padding: 16px 18px; background: rgba(0, 0, 0, 0.25); border-bottom: 4px solid var(--light-green); display: flex; align-items: center; gap: 10px; }
+    .brand-header i { font-size: 22px; color: var(--light-green); }
+    .brand-header h2 { font-size: 16px; font-weight: 800; letter-spacing: 0.5px; }
+
+    .nav-menu { padding: 12px 8px; display: flex; flex-direction: column; gap: 4px; }
+    .menu-group { display: flex; flex-direction: column; }
+    .menu-header { padding: 9px 12px; color: #FFFFFF; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: space-between; border-radius: 6px; cursor: pointer; transition: all 0.2s; }
+    .menu-header:hover { background: rgba(255, 255, 255, 0.1); }
+    .menu-header-title { display: flex; align-items: center; gap: 8px; }
+    .arrow-icon { font-size: 10px; transition: transform 0.2s; }
+
+    .tree-sub { display: none; flex-direction: column; padding-left: 20px; gap: 2px; margin-top: 2px; }
+    .menu-group.open .tree-sub { display: flex; }
+    .menu-group.open .arrow-icon { transform: rotate(90deg); }
+
+    .tree-item { padding: 6px 10px; color: #94A3B8; font-size: 11px; font-weight: 600; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+    .tree-item::before { content: '├─'; color: #475569; font-family: monospace; }
+    .tree-item:last-child::before { content: '└─'; }
+    .tree-item:hover, .tree-item.active { color: #FFFFFF; background: rgba(255, 255, 255, 0.12); }
+    .tree-item.active { color: var(--light-green); font-weight: 700; }
+
+    .menu-header.active-page { background: rgba(255, 255, 255, 0.14); color: var(--light-green); }
+
+    .main-wrapper { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+    .top-bar { background: var(--card-bg); padding: 10px 24px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; gap: 20px; }
+    .global-search { display: flex; align-items: center; background: #F1F5F9; border: 1px solid var(--border-color); border-radius: 6px; padding: 7px 14px; width: 420px; gap: 10px; }
+    .global-search input { border: none; background: transparent; outline: none; font-size: 12px; width: 100%; }
+
+    .top-right { display: flex; align-items: center; gap: 18px; }
+    .bell-icon { position: relative; cursor: pointer; font-size: 16px; color: var(--text-dark); }
+    .bell-badge { position: absolute; top: -6px; right: -8px; background: var(--danger-red); color: white; font-size: 9px; font-weight: 800; border-radius: 50%; padding: 2px 5px; }
+
+    .header-section { background: #FFFFFF; padding: 12px 24px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; }
+    .breadcrumbs { font-size: 11px; color: var(--text-muted); font-weight: 600; display: flex; align-items: center; gap: 6px; }
+    .breadcrumbs span.active { color: var(--primary-blue); font-weight: 700; }
+
+    .action-toolbar { display: flex; gap: 8px; }
+    .btn { padding: 7px 12px; border-radius: 5px; font-size: 11px; font-weight: 700; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s; }
+    .btn:active { transform: scale(0.96); }
+    .btn-primary { background: var(--primary-blue); color: white; }
+    .btn-success { background: var(--success-green); color: white; }
+    .btn-purple { background: var(--purple-accent); color: white; }
+    .btn-outline { background: #F8FAFC; border: 1px solid var(--border-color); color: var(--text-dark); }
+    .btn-outline:hover { background: #E2E8F0; }
+    .btn-danger { background: var(--danger-red); color: white; }
+    .btn-danger:hover { background: #B91C1C; }
+
+    .content-body { flex: 1; padding: 16px 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
+
+    .metrics-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; flex-shrink: 0; }
+    .metric-card { background: var(--card-bg); border-radius: 6px; padding: 12px; border: 1px solid var(--border-color); display: flex; flex-direction: column; justify-content: space-between; gap: 4px; transition: transform .15s ease; }
+    .metric-card:hover { transform: translateY(-2px); }
+    .metric-card label { font-size: 9px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
+    .metric-card h3 { font-size: 16px; font-weight: 800; color: var(--primary-blue); }
+
+    .panel-card { background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border-color); display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0; }
+    .panel-header { padding: 10px 14px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: #F8FAFC; }
+    .panel-header h3 { font-size: 12px; font-weight: 700; color: var(--primary-blue); display: flex; align-items: center; gap: 6px; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 11px; }
+    thead th { background: var(--primary-blue); color: white; text-align: left; padding: 8px 10px; font-weight: 600; }
+    tbody td { padding: 8px 10px; border-bottom: 1px solid var(--border-color); vertical-align: middle; }
+    tbody tr:hover { background-color: #F1F5F9; }
+    tbody tr.removing { animation: fadeOut .2s ease forwards; }
+    @keyframes fadeOut { to { opacity: 0; } }
+
+    .badge-success { background: #DCFCE7; color: var(--success-green); padding: 2px 6px; border-radius: 10px; font-weight: 700; }
+    .badge-warning { background: #FEF3C7; color: var(--warning-orange); padding: 2px 6px; border-radius: 10px; font-weight: 700; }
+    .badge-danger { background: #FEE2E2; color: var(--danger-red); padding: 2px 6px; border-radius: 10px; font-weight: 700; }
+    .badge-muted { background: #E2E8F0; color: var(--text-muted); padding: 2px 6px; border-radius: 10px; font-weight: 700; }
+
+    .dept-pill { padding: 2px 8px; border-radius: 10px; font-weight: 700; font-size: 10px; background: #E0E7FF; color: #3730A3; }
+
+    .row-actions { display: flex; gap: 4px; }
+    .btn-icon { width: 24px; height: 24px; border-radius: 4px; border: 1px solid var(--border-color); background: white; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 10px; color: var(--text-dark); transition: background .15s ease; }
+    .btn-icon:hover { background: #E2E8F0; }
+
+    /* MODAL */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(15,26,43,.55); display: none; align-items: center; justify-content: center; z-index: 500; }
+    .modal-overlay.show { display: flex; }
+    .modal-box { background: var(--card-bg); width: 380px; max-height: 88vh; overflow-y: auto; border-radius: 8px; padding: 18px; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 20px 50px rgba(0,0,0,.3); animation: modalPop .18s ease; }
+    @keyframes modalPop { from { transform: scale(.94); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .modal-box h3 { color: var(--primary-blue); font-size: 13px; }
+    .modal-box label { font-size: 10px; font-weight: 700; color: var(--text-muted); }
+    .modal-box input, .modal-box select { padding: 6px 8px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 11px; }
+    .modal-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
+
+    .toast-stack { position: fixed; bottom: 18px; right: 18px; display: flex; flex-direction: column; gap: 8px; z-index: 999; }
+    .toast { background: var(--primary-blue); color: white; padding: 10px 16px; border-radius: 6px; font-size: 11px; font-weight: 700; box-shadow: 0 8px 20px rgba(0,0,0,.25); display: flex; align-items: center; gap: 8px; animation: toastIn .25s ease; }
+    .toast.success { background: var(--success-green); }
+    .toast.danger { background: var(--danger-red); }
+    @keyframes toastIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .toast.leaving { animation: toastOut .25s ease forwards; }
+    @keyframes toastOut { to { opacity: 0; transform: translateX(20px); } }
+  </style>
+  <script src="airtouch_store.js"></script>
+</head>
+<body>
+
+  <aside class="sidebar">
+    <div class="brand-header">
+      <i class="fa-solid fa-wifi"></i>
+      <h2>AIR TOUCH ERP</h2>
+    </div>
+
+    <nav class="nav-menu">
+      <div class="menu-group">
+        <div class="menu-header" onclick="location.href='dashboard.html'">
+          <div class="menu-header-title"><i class="fa-solid fa-house"></i> 🏠 Dashboard</div>
+        </div>
+      </div>
+
+      <div class="menu-group">
+        <div class="menu-header" onclick="toggleMenu(this)">
+          <div class="menu-header-title"><i class="fa-solid fa-boxes-stacked"></i> 📦 Inventory</div>
+          <i class="fa-solid fa-chevron-right arrow-icon"></i>
+        </div>
+        <div class="tree-sub">
+          <div class="tree-item" onclick="location.href='store_inventory.html'">Store Stock</div>
+          <div class="tree-item" onclick="location.href='purchase.html'">Purchase</div>
+          <div class="tree-item" onclick="location.href='dispatch.html'">Dispatch</div>
+          <div class="tree-item" onclick="location.href='ledger.html'">Ledger</div>
+        </div>
+      </div>
+
+      <div class="menu-group">
+        <div class="menu-header" onclick="toggleMenu(this)">
+          <div class="menu-header-title"><i class="fa-solid fa-wrench"></i> 🔧 Installation</div>
+          <i class="fa-solid fa-chevron-right arrow-icon"></i>
+        </div>
+        <div class="tree-sub">
+          <div class="tree-item" onclick="location.href='installation.html'">New Installation</div>
+          <div class="tree-item" onclick="location.href='installation.html'">Installation List</div>
+          <div class="tree-item" onclick="location.href='installation.html'">Returned Material</div>
+          <div class="tree-item" onclick="location.href='installation_exchange.html'">Installation Exchange</div>
+        </div>
+      </div>
+
+      <div class="menu-group">
+        <div class="menu-header" onclick="toggleMenu(this)">
+          <div class="menu-header-title"><i class="fa-solid fa-chart-pie"></i> 📊 Reports</div>
+          <i class="fa-solid fa-chevron-right arrow-icon"></i>
+        </div>
+        <div class="tree-sub">
+          <div class="tree-item" onclick="location.href='installation.html'">Daily Summary</div>
+          <div class="tree-item" onclick="location.href='installation.html'">Monthly Report</div>
+          <div class="tree-item" onclick="location.href='installation.html'">City Wise Stock</div>
+        </div>
+      </div>
+
+      <div class="menu-group">
+        <div class="menu-header active-page" onclick="location.href='employees.html'">
+          <div class="menu-header-title"><i class="fa-solid fa-users"></i> 👨 Employees</div>
+        </div>
+      </div>
+
+      <div class="menu-group">
+        <div class="menu-header" onclick="location.href='settings.html'"><div class="menu-header-title"><i class="fa-solid fa-gear"></i> ⚙ Settings</div></div>
+      </div>
+    </nav>
+  </aside>
+
+  <main class="main-wrapper">
+
+    <header class="top-bar">
+      <div class="global-search">
+        <i class="fa-solid fa-magnifying-glass" style="color:var(--text-muted);"></i>
+        <input type="text" id="searchInput" placeholder="🔍 Search Name / Code / Department...">
+      </div>
+
+      <div class="top-right">
+        <div class="bell-icon" title="Notifications" id="bellBtn">
+          <i class="fa-solid fa-bell"></i>
+          <span class="bell-badge" id="bellBadge">1</span>
+        </div>
+        <div style="font-size:11px; font-weight:700; color:var(--primary-blue);">
+          <i class="fa-solid fa-user-circle"></i> Admin Profile
+        </div>
+      </div>
+    </header>
+
+    <section class="header-section">
+      <div class="breadcrumbs">
+        <span>Dashboard</span> &gt; <span class="active">Employees</span>
+      </div>
+
+      <div class="action-toolbar">
+        <button class="btn btn-purple" id="addEmpBtn"><i class="fa-solid fa-user-plus"></i> ➕ Add Employee</button>
+        <button class="btn btn-outline" id="exportBtn"><i class="fa-solid fa-file-export"></i> 📤 Export Excel</button>
+        <button class="btn btn-outline" id="printBtn"><i class="fa-solid fa-print"></i> 🖨 Print</button>
+        <button class="btn btn-outline" id="refreshBtn"><i class="fa-solid fa-rotate"></i> 🔄 Refresh</button>
+      </div>
+    </section>
+
+    <div class="content-body">
+
+      <section class="metrics-grid">
+        <div class="metric-card"><label>👥 Total Employees</label><h3 id="mTotal">0</h3></div>
+        <div class="metric-card"><label>🟢 Active</label><h3 style="color:var(--success-green);" id="mActive">0</h3></div>
+        <div class="metric-card"><label>🔴 Inactive / Resigned</label><h3 style="color:var(--danger-red);" id="mInactive">0</h3></div>
+        <div class="metric-card"><label>🗺️ Cities Covered</label><h3 id="mCities">0</h3></div>
+      </section>
+
+      <section class="panel-card">
+        <div class="panel-header">
+          <h3><i class="fa-solid fa-table"></i> Employee Directory</h3>
+          <span style="font-size:10px; color:var(--text-muted);">Field techs, store &amp; billing staff, admins</span>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Emp Code</th>
+              <th>Full Name</th>
+              <th>Department</th>
+              <th>City</th>
+              <th>Joining Date</th>
+              <th>Phone</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="empBody"></tbody>
+        </table>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- ADD / EDIT EMPLOYEE MODAL -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal-box">
+      <h3 id="modalTitle">Add New Employee</h3>
+      <label>Employee Code</label>
+      <input type="text" id="mCode" placeholder="e.g. EMP-004">
+      <label>Full Name</label>
+      <input type="text" id="mName" placeholder="e.g. Usman Tariq">
+      <div class="modal-row">
+        <div>
+          <label>Department</label>
+          <select id="mDept">
+            <option value="Technical">Technical</option>
+            <option value="Store">Store</option>
+            <option value="Billing">Billing</option>
+            <option value="Admin">Admin</option>
+          </select>
+        </div>
+        <div>
+          <label>Status</label>
+          <select id="mStatus">
+            <option value="Active">Active</option>
+            <option value="Inactive">Inactive</option>
+            <option value="Resigned">Resigned</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-row">
+        <div>
+          <label>Joining Date</label>
+          <input type="date" id="mJoining">
+        </div>
+        <div>
+          <label>Phone</label>
+          <input type="text" id="mPhone" placeholder="03XX-XXXXXXX">
+        </div>
+      </div>
+      <label>Assigned City (field techs)</label>
+      <select id="mCity">
+        <option value="">— Unassigned (office staff) —</option>
+      </select>
+      <div class="modal-actions">
+        <button class="btn btn-outline" id="modalCancelBtn">Cancel</button>
+        <button class="btn btn-purple" id="modalSaveBtn">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-stack" id="toastStack"></div>
+
+  <script>
+    function toggleMenu(element) {
+      element.parentElement.classList.toggle('open');
+    }
+
+    /* ---------------- MOCK DATA (mirrors the employees table) ---------------- */
+    let employees = [
+      { code:'EMP-001', name:'Bilal Ahmed',      department:'Admin',     joining:'2023-01-10', phone:'0300-0000001', status:'Active', city:'' },
+      { code:'EMP-002', name:'Ali Raza',         department:'Technical', joining:'2023-03-15', phone:'0300-0000002', status:'Active', city:'' },
+      { code:'EMP-003', name:'Asad Khan',        department:'Store',     joining:'2023-06-01', phone:'0300-0000003', status:'Active', city:'' },
+      // Field technicians — one assigned per city
+      { code:'EMP-004', name:'Hamza Akhter',     department:'Technical', joining:'', phone:'', status:'Active', city:'BTK' },
+      { code:'EMP-005', name:'Jawad Khan',       department:'Technical', joining:'', phone:'', status:'Active', city:'TOK' },
+      { code:'EMP-006', name:'Bilal Khan',       department:'Technical', joining:'', phone:'', status:'Active', city:'DHR' },
+      { code:'EMP-007', name:'Zain ZK',          department:'Technical', joining:'', phone:'', status:'Active', city:'CKD' },
+      { code:'EMP-008', name:'Adnan',            department:'Technical', joining:'', phone:'', status:'Active', city:'OCH' },
+      { code:'EMP-009', name:'Arshad Khan',      department:'Technical', joining:'', phone:'', status:'Active', city:'SKT' },
+      { code:'EMP-010', name:'Attaullah Khan',   department:'Technical', joining:'', phone:'', status:'Active', city:'TMG' },
+      { code:'EMP-011', name:'Yaseen Khan',      department:'Technical', joining:'', phone:'', status:'Active', city:'KKL' },
+      { code:'EMP-012', name:'Ezhar',            department:'Technical', joining:'', phone:'', status:'Active', city:'MTA' },
+      { code:'EMP-013', name:'Shayan',           department:'Technical', joining:'', phone:'', status:'Active', city:'KOT' },
+      { code:'EMP-014', name:'Ubaid Khan',       department:'Technical', joining:'', phone:'', status:'Active', city:'SHM' },
+      { code:'EMP-015', name:'Shehzad Khan',     department:'Technical', joining:'', phone:'', status:'Active', city:'SWT' },
+      { code:'EMP-016', name:'Fazal Wadood',     department:'Technical', joining:'', phone:'', status:'Active', city:'THA' },
+      { code:'EMP-017', name:'Muhammad Noman',   department:'Technical', joining:'', phone:'', status:'Active', city:'ALD' },
+      { code:'EMP-018', name:'Muhammad Bilal',   department:'Technical', joining:'', phone:'', status:'Active', city:'BDN' },
+    ];
+
+    // Mirrors the `cities` table in seed_data.py, so the "Assigned City"
+    // dropdown always matches the real city codes used across the ERP.
+    const CITY_OPTIONS = [
+      ['BTK','Bahria Town'], ['DHR','Dhamial'], ['TOK','Tokar'], ['BDN','Bandi'],
+      ['CKD','Chakwal Road'], ['OCH','Ochali'], ['SKT','Saket'], ['THA','Thanda Pani'],
+      ['ALD','Aldrich Colony'], ['TLS','Talwara'], ['MTA','Mattani'], ['SWT','Swat'],
+      ['TMG','Tarnama'], ['KKL','Kakul'], ['CHARBAGH','Charbagh'], ['KOT','Kot'],
+      ['SHM','Shamozai'], ['GHL','Ghalanai'],
+    ];
+    let editingCode = null;
+
+    const EMP_STORAGE_KEY = 'airtouch_employees';
+    (function loadSavedEmployees(){
+      try {
+        const raw = localStorage.getItem(EMP_STORAGE_KEY);
+        if (raw) { const saved = JSON.parse(raw); if (Array.isArray(saved)) employees = saved; }
+      } catch (e) { /* ignore corrupted storage, keep sample data */ }
+    })();
+    function persistEmployees(){
+      try { localStorage.setItem(EMP_STORAGE_KEY, JSON.stringify(employees)); } catch (e) {}
+    }
+
+    function toISODate(value){
+      if (!value) return new Date().toISOString().slice(0,10);
+      if (value instanceof Date && !isNaN(value)) return value.toISOString().slice(0,10);
+      const parsed = new Date(value);
+      return isNaN(parsed) ? new Date().toISOString().slice(0,10) : parsed.toISOString().slice(0,10);
+    }
+
+    function statusBadge(status){
+      if (status === 'Active') return { cls:'badge-success', label:'🟢 Active' };
+      if (status === 'Inactive') return { cls:'badge-warning', label:'🟡 Inactive' };
+      return { cls:'badge-danger', label:'🔴 Resigned' };
+    }
+
+    function renderEmployees(filter){
+      persistEmployees();
+      const body = document.getElementById('empBody');
+      const q = (filter || '').toLowerCase();
+      const rows = employees.filter(e =>
+        !q || e.code.toLowerCase().includes(q) || e.name.toLowerCase().includes(q) ||
+        e.department.toLowerCase().includes(q) || (e.city || '').toLowerCase().includes(q)
+      );
+
+      body.innerHTML = rows.map(e => {
+        const s = statusBadge(e.status);
+        return `<tr data-code="${e.code}">
+          <td><code>${e.code}</code></td>
+          <td><strong>${e.name}</strong></td>
+          <td><span class="dept-pill">${e.department}</span></td>
+          <td>${e.city ? `<span class="badge-muted">${e.city}</span>` : '—'}</td>
+          <td>${e.joining ? toISODate(e.joining) : '—'}</td>
+          <td>${e.phone || '—'}</td>
+          <td><span class="${s.cls}">${s.label}</span></td>
+          <td>
+            <div class="row-actions">
+              <button class="btn-icon" title="Edit" data-action="edit"><i class="fa-solid fa-pen"></i></button>
+              <button class="btn-icon" style="color:var(--danger-red)" title="Delete" data-action="delete"><i class="fa-solid fa-trash"></i></button>
+            </div>
+          </td>
+        </tr>`;
+      }).join('') || `<tr><td colspan="8" style="text-align:center; color:var(--text-muted); padding:16px;">No employees match your search</td></tr>`;
+
+      body.querySelectorAll('button[data-action]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const code = btn.closest('tr').dataset.code;
+          const action = btn.dataset.action;
+          if (action === 'edit') openModal(code);
+          else if (action === 'delete') deleteEmployee(code);
+        });
+      });
+
+      updateMetrics();
+    }
+
+    function updateMetrics(){
+      document.getElementById('mTotal').textContent = employees.length;
+      document.getElementById('mActive').textContent = employees.filter(e => e.status === 'Active').length;
+      document.getElementById('mInactive').textContent = employees.filter(e => e.status !== 'Active').length;
+      document.getElementById('mCities').textContent = new Set(employees.filter(e => e.city).map(e => e.city)).size;
+    }
+
+    /* ---------------- SEARCH ---------------- */
+    document.getElementById('searchInput').addEventListener('input', (e) => renderEmployees(e.target.value));
+
+    /* ---------------- ADD / EDIT MODAL ---------------- */
+    const overlay = document.getElementById('modalOverlay');
+    const citySelect = document.getElementById('mCity');
+    CITY_OPTIONS.forEach(([code, name]) => {
+      const opt = document.createElement('option');
+      opt.value = code;
+      opt.textContent = `${code} — ${name}`;
+      citySelect.appendChild(opt);
+    });
+
+    function openModal(code){
+      editingCode = code || null;
+      document.getElementById('modalTitle').textContent = code ? 'Edit Employee' : 'Add New Employee';
+      if (code){
+        const e = employees.find(x => x.code === code);
+        document.getElementById('mCode').value = e.code;
+        document.getElementById('mCode').disabled = true;
+        document.getElementById('mName').value = e.name;
+        document.getElementById('mDept').value = e.department;
+        document.getElementById('mStatus').value = e.status;
+        document.getElementById('mJoining').value = e.joining ? toISODate(e.joining) : '';
+        document.getElementById('mPhone').value = e.phone || '';
+        document.getElementById('mCity').value = e.city || '';
+      } else {
+        document.getElementById('mCode').disabled = false;
+        document.getElementById('mCode').value = '';
+        document.getElementById('mName').value = '';
+        document.getElementById('mDept').value = 'Technical';
+        document.getElementById('mStatus').value = 'Active';
+        document.getElementById('mJoining').value = '';
+        document.getElementById('mPhone').value = '';
+        document.getElementById('mCity').value = '';
+      }
+      overlay.classList.add('show');
+    }
+    document.getElementById('addEmpBtn').onclick = () => openModal(null);
+    document.getElementById('modalCancelBtn').onclick = () => overlay.classList.remove('show');
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('show'); });
+
+    document.getElementById('modalSaveBtn').onclick = () => {
+      const code = document.getElementById('mCode').value.trim();
+      const name = document.getElementById('mName').value.trim();
+      const department = document.getElementById('mDept').value;
+      const status = document.getElementById('mStatus').value;
+      const joining = document.getElementById('mJoining').value || '';
+      const phone = document.getElementById('mPhone').value.trim();
+      const city = document.getElementById('mCity').value;
+
+      if (!code || !name){ showToast('Employee code and name are required', 'danger'); return; }
+
+      if (editingCode){
+        const e = employees.find(x => x.code === editingCode);
+        Object.assign(e, { name, department, status, joining, phone, city });
+        showToast(`${code} updated`, 'success');
+      } else {
+        if (employees.some(x => x.code === code)){ showToast('Employee code already exists', 'danger'); return; }
+        employees.push({ code, name, department, status, joining, phone, city });
+        showToast(`${code} added`, 'success');
+      }
+      overlay.classList.remove('show');
+      renderEmployees(document.getElementById('searchInput').value);
+    };
+
+    function deleteEmployee(code){
+      const row = document.querySelector(`tr[data-code="${code}"]`);
+      if (row) row.classList.add('removing');
+      setTimeout(() => {
+        employees = employees.filter(e => e.code !== code);
+        renderEmployees(document.getElementById('searchInput').value);
+        showToast(`${code} deleted`, 'danger');
+      }, 200);
+    }
+
+    /* ---------------- TOOLBAR ---------------- */
+    document.getElementById('refreshBtn').onclick = () => {
+      renderEmployees('');
+      document.getElementById('searchInput').value = '';
+      showToast('Employee list refreshed', 'success');
+    };
+    document.getElementById('printBtn').onclick = () => window.print();
+
+    /* ---------------- EXPORT (styled .xlsx — branded banner, colored header, banded rows, inactive-status highlight) ---------------- */
+    document.getElementById('exportBtn').onclick = () => {
+      const COLS = 7; // Employee Code, Full Name, Department, City, Joining Date, Phone, Status
+      const HEADERS = ['Employee Code', 'Full Name', 'Department', 'City', 'Joining Date', 'Phone', 'Status'];
+
+      // Brand palette pulled from this page's own CSS variables, so the exported
+      // file visually matches the app instead of looking like a generic dump.
+      const NAVY = '146C2E', WHITE = 'FFFFFF', TEXT_DARK = '1E293B', BORDER = 'CBD5E1', BAND = 'F0F4F8', RED = 'DC2626', GREEN = '208B3A';
+
+      const thinBorder = { style: 'thin', color: { rgb: BORDER } };
+      const borderAll = { top: thinBorder, bottom: thinBorder, left: thinBorder, right: thinBorder };
+
+      const titleStyle = { font: { name: 'Calibri', sz: 16, bold: true, color: { rgb: WHITE } }, fill: { fgColor: { rgb: NAVY } }, alignment: { horizontal: 'center', vertical: 'center' } };
+      const subtitleStyle = { font: { name: 'Calibri', sz: 10, italic: true, color: { rgb: '64748B' } }, alignment: { horizontal: 'center' } };
+      const headerStyle = { font: { name: 'Calibri', sz: 11, bold: true, color: { rgb: WHITE } }, fill: { fgColor: { rgb: NAVY } }, alignment: { horizontal: 'center', vertical: 'center' }, border: borderAll };
+
+      function rowStyle(bandFill, inactive, colIndex) {
+        const isStatusCol = colIndex === 6;
+        return {
+          font: { name: 'Calibri', sz: 10.5, color: { rgb: isStatusCol ? (inactive ? RED : GREEN) : TEXT_DARK }, bold: isStatusCol },
+          fill: { fgColor: { rgb: inactive ? 'FEE2E2' : (bandFill ? BAND : WHITE) } },
+          alignment: { horizontal: colIndex === 1 ? 'left' : 'center', vertical: 'center' },
+          border: borderAll,
+        };
+      }
+
+      const aoa = [];
+      aoa.push(['Air Touch Enterprise — Employees Report', '', '', '', '', '', '']);
+      aoa.push([`Generated on ${toISODate(new Date())}  •  ${employees.length} employees`, '', '', '', '', '', '']);
+      aoa.push(HEADERS);
+      employees.forEach(e => {
+        aoa.push([e.code, e.name, e.department, e.city || '', e.joining ? new Date(toISODate(e.joining)) : '', e.phone || '', e.status]);
+      });
+
+      const worksheet = XLSX.utils.aoa_to_sheet(aoa);
+      worksheet['!cols'] = [{wch:12},{wch:22},{wch:14},{wch:10},{wch:14},{wch:16},{wch:12}];
+      worksheet['!rows'] = [{hpt:26},{hpt:16}];
+      worksheet['!merges'] = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: COLS - 1 } },
+        { s: { r: 1, c: 0 }, e: { r: 1, c: COLS - 1 } },
+      ];
+      worksheet['!freeze'] = { xSplit: 0, ySplit: 3 };
+      worksheet['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 2, c: 0 }, e: { r: 2 + employees.length, c: COLS - 1 } }) };
+
+      for (let c = 0; c < COLS; c++) {
+        const t = XLSX.utils.encode_cell({ r: 0, c });
+        if (worksheet[t]) worksheet[t].s = titleStyle;
+        const s = XLSX.utils.encode_cell({ r: 1, c });
+        if (worksheet[s]) worksheet[s].s = subtitleStyle;
+      }
+      for (let c = 0; c < COLS; c++) {
+        const ref = XLSX.utils.encode_cell({ r: 2, c });
+        if (worksheet[ref]) worksheet[ref].s = headerStyle;
+      }
+      employees.forEach((e, idx) => {
+        const r = 3 + idx;
+        const inactive = String(e.status).toLowerCase() !== 'active';
+        for (let c = 0; c < COLS; c++) {
+          const ref = XLSX.utils.encode_cell({ r, c });
+          if (!worksheet[ref]) continue;
+          worksheet[ref].s = rowStyle(idx % 2 === 1, inactive, c);
+          if (c === 4 && worksheet[ref].v instanceof Date) worksheet[ref].z = 'yyyy-mm-dd';
+        }
+      });
+
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Employees');
+      XLSX.writeFile(workbook, `employees_export_${toISODate(new Date())}.xlsx`);
+      showToast('Employees exported as a designed Excel (.xlsx)', 'success');
+    };
+
+    /* ---------------- NOTIFICATIONS ---------------- */
+    document.getElementById('bellBtn').onclick = () => {
+      document.getElementById('bellBadge').style.display = 'none';
+      showToast('No pending employee alerts', '');
+    };
+
+    /* ---------------- TOASTS ---------------- */
+    function showToast(msg, kind){
+      const stack = document.getElementById('toastStack');
+      const t = document.createElement('div');
+      t.className = `toast ${kind||''}`;
+      t.innerHTML = `<i class="fa-solid fa-circle-check"></i> ${msg}`;
+      stack.appendChild(t);
+      setTimeout(() => { t.classList.add('leaving'); setTimeout(() => t.remove(), 250); }, 2600);
+    }
+
+    /* ---------------- INIT ---------------- */
+    renderEmployees('');
+  </script>
+
+</body>
+</html>

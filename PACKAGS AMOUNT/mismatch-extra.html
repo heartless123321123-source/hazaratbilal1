@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AIRTOUCH - Mismatch (Extra Payment)</title>
+  
+  <!-- Fonts, Icons & Chart.js Engine -->
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+  <script src="jspdf.umd.min.js"></script>
+  <script src="jspdf.plugin.autotable.min.js"></script>
+</head>
+
+<body>
+
+  <!-- Dynamic Rotator Background Container -->
+  <div id="bg-slider"></div>
+
+  <!-- ══ SIDEBAR NAVIGATION ══ -->
+  <div id="sidebar">
+    <div class="brand">
+      <div class="brand-logo">AIR<span class="at-g">TOUCH</span></div>
+      <div class="brand-sub">Billing Engine v2.5</div>
+    </div>
+
+    <nav>
+      <a class="nav-btn" id="btn-nav-dashboard" href="dashboard.html">
+        <span class="icon">🏠</span> Dashboard
+      </a>
+
+      <div class="nav-section nav-section-toggle" onclick="AppUI.toggleNavGroup('management', this)">
+        <span>Management</span> <span class="nav-toggle-arrow" id="nav-arrow-management">▾</span>
+      </div>
+<div class="nav-group" id="nav-group-management">
+      <a class="nav-btn" id="btn-nav-import" href="import.html">
+        <span class="icon">📥</span> Dual Data Import
+      </a>
+      <a class="nav-btn" id="btn-nav-verify" href="verify.html">
+        <span class="icon">🔍</span> FIFO Verification
+      </a>
+      <a class="nav-btn" id="btn-nav-pending" href="pending.html">
+        <span class="icon">⏳</span> Pending Bills
+      </a>
+      <a class="nav-btn" id="btn-nav-nopayment" href="billing-not-in-sale.html">
+        <span class="icon">🟠</span> Billing Not In Sale
+      </a>
+      <a class="nav-btn" id="btn-nav-clear-billing" href="clear-billing.html">
+        <span class="icon">✅</span> Clear Billing
+      </a>
+      <a class="nav-btn" id="btn-nav-mismatch-less" href="mismatch-less.html">
+        <span class="icon">🔴</span> Mismatch — Less
+      </a>
+      <a class="nav-btn active" id="btn-nav-mismatch-extra" href="mismatch-extra.html">
+        <span class="icon">🟣</span> Mismatch — Extra
+      </a>
+      <a class="nav-btn" id="btn-nav-duplicates" href="duplicates.html">
+        <span class="icon">🔁</span> Duplicate Recharges
+      </a>
+      <a class="nav-btn" id="btn-nav-grid" href="ledger.html">
+        <span class="icon">📋</span> Master Ledger
+      </a>
+      <a class="nav-btn" id="btn-nav-editBilling" href="edit-billing.html">
+        <span class="icon">✏️</span> Edit Billing
+      </a>
+      <a class="nav-btn" id="btn-nav-free-users" href="free-users.html">
+        <span class="icon">🆓</span> Free Users
+      </a>
+      </div>
+
+      <div class="nav-section">Analytics</div>
+      <a class="nav-btn" id="btn-nav-analytics" href="analytics.html">
+        <span class="icon">📈</span> Analytics & Insights
+      </a>
+      <a class="nav-btn" id="btn-nav-search" href="#" onclick="AppUI.openGlobalSearch(); return false;">
+        <span class="icon">🔎</span> Global Search
+      </a>
+
+      <div class="nav-section">System</div>
+      <a class="nav-btn" id="btn-nav-settings" href="settings.html">
+        <span class="icon">⚙️</span> Settings
+      </a>
+    </nav>
+  </div>
+
+  <!-- ══ MAIN CONTENT AREA ══ -->
+  <div id="main">
+
+    <!-- TOP HEADER -->
+    <div class="header-bar">
+      <button class="btn btn-blue" id="sidebar-toggle" onclick="document.getElementById('sidebar').classList.toggle('active')" style="display:none;">☰ Menu</button>
+
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" placeholder="Quick Search User ID, Name, Phone, CNIC..." oninput="AppUI.quickSearch(this.value)">
+      </div>
+
+      <div class="header-actions">
+        <button class="btn" style="background:var(--surface); backdrop-filter: var(--backdrop-blur); border: 1.5px solid var(--border);" onclick="AppUI.toggleTheme()">🌙 Theme Switch</button>
+        <button class="btn btn-blue" onclick="AppUI.runSync()">🔄 Run Sync</button>
+      </div>
+    </div>
+
+    <!-- SMART NOTIFICATIONS BAR -->
+    <div class="alerts-container">
+      <div class="alert-chip warning">⏰ <span id="alert-expiring-cnt">0</span> Users Expiring Today</div>
+      <div class="alert-chip danger">⌛ <span id="alert-pending-cnt">0</span> Pending Bills</div>
+      <div class="alert-chip danger">🔁 <span id="alert-duplicate-cnt">0</span> Duplicate Records</div>
+      <div class="alert-chip purple">⚠️ <span id="alert-mismatch-cnt">0</span> Mismatch Amounts</div>
+    </div>
+
+    <!-- ─── AMOUNT MISMATCH — EXTRA PAYMENT (DEDICATED PAGE) ─── -->
+    <div id="page-mismatch-extra" class="page">
+      <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+        <div>
+          <h2 style="font-size: 24px; font-weight: 800;">🟣 Amount Mismatch — Extra Payment</h2>
+          <p style="font-size: 13.5px; color: var(--text-muted);">Sale (paid) amount, Billing (bill) amount se <b>zyada</b> hai — customer ne package se zyada payment ki hai.</p>
+        </div>
+        <button class="btn btn-blue" onclick="AppUI.runBillingAnalysis()">🔄 Run / Refresh Verification</button>
+      </div>
+
+      <div id="verify-empty-msg" class="card" style="text-align:center; padding:40px; color:var(--text-muted);">
+        Abhi tak koi verification nahi chali. Pehle <b>Dual Data Import</b> page se Sale aur Billing files upload karein, phir yahan "Run / Refresh Verification" dabayein.
+      </div>
+
+      <div id="verify-results" style="display:none;">
+
+        <div class="info-banner purple">
+          <span class="info-banner-icon">🟣</span>
+          <span>Ye woh bills hain jahan Sale se mili payment, Billing amount se zyada hai. <strong>Extra Amount</strong> column dikhata hai kitna zyada mila hai. Agar us user ka koi <b>purana Pending bill</b> hai, to Extra Amount usay (FIFO — sabse purana pehle) <b>khud-b-khud (automatically)</b> clear kar deta hai — jaise Bill Rs. 2000 + Extra Rs. 4000 aur ek purana Pending Rs. 2000 ho, to wo pending automatic clear ho jayega aur Rs. 2000 extra bacha rahega, koi click ki zaroorat nahi. Agar koi pending cover nahi hota, row waisi hi rahegi. Kisi row ko auto-clear se nikalna ho to "Undo" button se alag rakh sakte hain. <b>Billing Amount</b> aur <b>Paid Amount</b> columns bhi edit ki ja sakti hain — sahi amount likh kar <b>💾 Save</b> dabayein, dono barabar ho jayein to row automatically Clear ho jayegi.</span>
+        </div>
+
+        <div class="dashboard-grid" style="margin-bottom:20px;">
+          <div class="stat-card purple"><div class="stat-header"><span class="stat-label">Extra-Payment Bills</span></div><div class="stat-value" id="pg-mismatch-extra-cnt">0</div></div>
+          <div class="stat-card purple"><div class="stat-header"><span class="stat-label">Total Extra Amount</span></div><div class="stat-value" id="pg-mismatch-extra-amt" style="font-size:20px;">Rs. 0</div></div>
+          <div class="stat-card green"><div class="stat-header"><span class="stat-label">Matching Pending Bill Mila</span></div><div class="stat-value" id="pg-mismatch-extra-match-cnt">0</div></div>
+        </div>
+
+        <div class="card" id="verify-mismatch-extra-card">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
+            <div style="font-weight:800;">🟣 Amount Mismatch — Extra Payment — Full List</div>
+            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+              <button class="btn btn-green" style="padding:4px 10px; font-size:11px;" onclick="AppUI.clearAllMismatchExtraMatches()" title="Manually alag rakhi gayi sab rows ko wapis auto-clear mein shamil karein">✅ Re-enable Auto-Clear (Sab)</button>
+              <select id="pg-mismatch-extra-city-filter" class="form-control" style="max-width:180px; padding:4px 8px; font-size:11px;" onchange="AppUI.setCategoryCityFilter('mismatchExtra', this.value)">
+                <option value="all">Sab Cities</option>
+              </select>
+              <button class="btn btn-outline" style="padding:4px 10px; font-size:11px;" onclick="AppUI.exportMismatchExtra('excel')">⬇️ Excel</button>
+              <button class="btn btn-outline" style="padding:4px 10px; font-size:11px;" onclick="AppUI.exportMismatchExtra('pdf')">⬇️ PDF</button>
+            </div>
+          </div>
+          <details class="card city-legend">
+            <summary>🏙️ City Code Directory — User ID prefix se city pehchani jaati hai</summary>
+            <div class="city-legend-body">
+              <span class="city-legend-item"><b>B City:</b>B, BTK, KHR, MKD</span>
+              <span class="city-legend-item"><b>CKD City:</b>CKD, BKD</span>
+              <span class="city-legend-item"><b>TLS City:</b>TLS, ZRT, NSF</span>
+              <span class="city-legend-item"><b>TOK City:</b>TOK, SLW, TNG, QLG, KML, TDC, MBD</span>
+              <span class="city-legend-item"><b>KOT City:</b>KOT</span>
+              <span class="city-legend-item"><b>SHM City:</b>SHM</span>
+              <span class="city-legend-item"><b>MTA City:</b>MTA</span>
+              <span class="city-legend-item"><b>SWAT City:</b>TLG, MGL, SNG, SWT, ODG, CBH, MNR (1-3 digit — MNR1, MNR12, MNR123)</span>
+              <span class="city-legend-item"><b>GHL City:</b>GHL, BKT, MNR (4+ digit — MNR1234)</span>
+              <span class="city-legend-item"><b>OCH City:</b>OSK, OCH</span>
+              <span class="city-legend-item"><b>BDN City:</b>BDN, KDZ</span>
+              <span class="city-legend-item"><b>SKT City:</b>SKT</span>
+              <span class="city-legend-item"><b>DHR City:</b>DHR</span>
+              <span class="city-legend-item"><b>ALD City:</b>ALD</span>
+              <span class="city-legend-item"><b>THA City:</b>THA</span>
+            </div>
+          </details>
+          <div class="table-wrap" style="max-height:640px; overflow:auto;">
+            <table>
+              <thead><tr><th>User</th><th>City</th><th>Name</th><th>Billing Amount</th><th>Paid Amount</th><th>Extra Amount</th><th>Month</th><th>By</th><th>Action</th></tr></thead>
+              <tbody id="pg-mismatch-extra-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+  </div>
+
+  <!-- ══ USER PROFILE MODAL ══ -->
+  <div class="modal-overlay" id="userModal">
+    <div class="modal-card">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h2 style="font-size:18px; font-weight:800;" id="modal-user-id">User Profile</h2>
+        <button class="btn" onclick="document.getElementById('userModal').classList.remove('active')">✕ Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

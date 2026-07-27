@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="ur" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Air Touch ERP - Purchase</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <!-- xlsx-js-style: SheetJS-compatible (same global XLSX, same read/import API) but also
+       writes real cell styling (fills, fonts, borders) into the .xlsx file, which the plain
+       cdnjs 'xlsx' build cannot do — this is what makes the Export button's file look designed. -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+  <style>
+    :root {
+      --primary-blue: #0A3663;
+      --hover-blue: #0E4782;
+      --success-green: #208B3A;
+      --light-green: #2DC653;
+      --warning-orange: #D97706;
+      --danger-red: #DC2626;
+      --bg-gray: #F0F4F8;
+      --card-bg: #FFFFFF;
+      --text-dark: #1E293B;
+      --text-muted: #64748B;
+      --border-color: #CBD5E1;
+      --purple-accent: #7C3AED;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+    body { background-color: var(--bg-gray); color: var(--text-dark); display: flex; height: 100vh; overflow: hidden; }
+
+    .sidebar { width: 260px; background: var(--primary-blue); color: #ffffff; display: flex; flex-direction: column; box-shadow: 4px 0 12px rgba(0,0,0,0.15); z-index: 10; overflow-y: auto; }
+    .brand-header { padding: 16px 18px; background: rgba(0, 0, 0, 0.25); border-bottom: 4px solid var(--light-green); display: flex; align-items: center; gap: 10px; }
+    .brand-header i { font-size: 22px; color: var(--light-green); }
+    .brand-header h2 { font-size: 16px; font-weight: 800; letter-spacing: 0.5px; }
+
+    .nav-menu { padding: 12px 8px; display: flex; flex-direction: column; gap: 4px; }
+    .menu-group { display: flex; flex-direction: column; }
+    .menu-header { padding: 9px 12px; color: #FFFFFF; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: space-between; border-radius: 6px; cursor: pointer; transition: all 0.2s; }
+    .menu-header:hover { background: rgba(255, 255, 255, 0.1); }
+    .menu-header-title { display: flex; align-items: center; gap: 8px; }
+    .arrow-icon { font-size: 10px; transition: transform 0.2s; }
+
+    .tree-sub { display: none; flex-direction: column; padding-left: 20px; gap: 2px; margin-top: 2px; }
+    .menu-group.open .tree-sub { display: flex; }
+    .menu-group.open .arrow-icon { transform: rotate(90deg); }
+
+    .tree-item { padding: 6px 10px; color: #94A3B8; font-size: 11px; font-weight: 600; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+    .tree-item::before { content: '├─'; color: #475569; font-family: monospace; }
+    .tree-item:last-child::before { content: '└─'; }
+    .tree-item:hover, .tree-item.active { color: #FFFFFF; background: rgba(255, 255, 255, 0.12); }
+    .tree-item.active { color: var(--light-green); font-weight: 700; }
+
+    .main-wrapper { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+    .top-bar { background: var(--card-bg); padding: 10px 24px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; gap: 20px; }
+    .global-search { display: flex; align-items: center; background: #F1F5F9; border: 1px solid var(--border-color); border-radius: 6px; padding: 7px 14px; width: 420px; gap: 10px; }
+    .global-search input { border: none; background: transparent; outline: none; font-size: 12px; width: 100%; }
+
+    .top-right { display: flex; align-items: center; gap: 18px; }
+    .bell-icon { position: relative; cursor: pointer; font-size: 16px; color: var(--text-dark); }
+    .bell-badge { position: absolute; top: -6px; right: -8px; background: var(--danger-red); color: white; font-size: 9px; font-weight: 800; border-radius: 50%; padding: 2px 5px; }
+
+    .header-section { background: #FFFFFF; padding: 12px 24px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; }
+    .breadcrumbs { font-size: 11px; color: var(--text-muted); font-weight: 600; display: flex; align-items: center; gap: 6px; }
+    .breadcrumbs span.active { color: var(--primary-blue); font-weight: 700; }
+    .breadcrumbs span.link { cursor: pointer; }
+    .breadcrumbs span.link:hover { color: var(--primary-blue); text-decoration: underline; }
+
+    .action-toolbar { display: flex; gap: 8px; }
+    .btn { padding: 7px 12px; border-radius: 5px; font-size: 11px; font-weight: 700; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s; }
+    .btn:active { transform: scale(0.96); }
+    .btn-primary { background: var(--primary-blue); color: white; }
+    .btn-success { background: var(--success-green); color: white; }
+    .btn-purple { background: var(--purple-accent); color: white; }
+    .btn-outline { background: #F8FAFC; border: 1px solid var(--border-color); color: var(--text-dark); }
+    .btn-outline:hover { background: #E2E8F0; }
+    .btn-danger { background: var(--danger-red); color: white; }
+    .btn-danger:hover { background: #B91C1C; }
+    .btn-sm { padding: 5px 9px; font-size: 10px; }
+
+    .content-body { flex: 1; padding: 16px 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
+
+    .metrics-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
+    .metric-card { background: var(--card-bg); border-radius: 6px; padding: 12px; border: 1px solid var(--border-color); display: flex; flex-direction: column; justify-content: space-between; gap: 4px; transition: transform .15s ease; }
+    .metric-card:hover { transform: translateY(-2px); }
+    .metric-card label { font-size: 9px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
+    .metric-card h3 { font-size: 16px; font-weight: 800; color: var(--primary-blue); }
+
+    .dashboard-grid { display: grid; grid-template-columns: 1fr 340px; gap: 16px; }
+    .panel-card { background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border-color); display: flex; flex-direction: column; overflow: hidden; }
+    .panel-header { padding: 10px 14px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: #F8FAFC; }
+    .panel-header h3 { font-size: 12px; font-weight: 700; color: var(--primary-blue); display: flex; align-items: center; gap: 6px; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 11px; }
+    thead th { background: var(--primary-blue); color: white; text-align: left; padding: 8px 10px; font-weight: 600; }
+    tbody td { padding: 8px 10px; border-bottom: 1px solid var(--border-color); vertical-align: middle; }
+    tbody tr:hover { background-color: #F1F5F9; }
+    tbody tr.removing { animation: fadeOut .2s ease forwards; }
+    @keyframes fadeOut { to { opacity: 0; } }
+
+    .badge-success { background: #DCFCE7; color: var(--success-green); padding: 2px 6px; border-radius: 10px; font-weight: 700; }
+    .badge-warning { background: #FEF3C7; color: var(--warning-orange); padding: 2px 6px; border-radius: 10px; font-weight: 700; }
+    .badge-danger { background: #FEE2E2; color: var(--danger-red); padding: 2px 6px; border-radius: 10px; font-weight: 700; }
+    .badge-info { background: #DBEAFE; color: #1D4ED8; padding: 2px 6px; border-radius: 10px; font-weight: 700; }
+
+    .row-actions { display: flex; gap: 4px; }
+    .btn-icon { width: 24px; height: 24px; border-radius: 4px; border: 1px solid var(--border-color); background: white; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 10px; color: var(--text-dark); transition: background .15s ease; }
+    .btn-icon:hover { background: #E2E8F0; }
+
+    .timeline { padding: 12px 14px; display: flex; flex-direction: column; gap: 12px; }
+    .timeline-item { display: flex; gap: 10px; font-size: 11px; border-bottom: 1px solid #F1F5F9; padding-bottom: 8px; }
+    .time-badge { font-weight: 800; color: var(--primary-blue); width: 45px; flex-shrink: 0; }
+
+    /* MODAL */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(15,26,43,.55); display: none; align-items: center; justify-content: center; z-index: 500; }
+    .modal-overlay.show { display: flex; }
+    .modal-box { background: var(--card-bg); width: 380px; border-radius: 8px; padding: 18px; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 20px 50px rgba(0,0,0,.3); animation: modalPop .18s ease; max-height: 90vh; overflow-y: auto; }
+    .modal-box.wide { width: 720px; }
+    @keyframes modalPop { from { transform: scale(.94); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .modal-box h3 { color: var(--primary-blue); font-size: 13px; }
+    .modal-box label { font-size: 10px; font-weight: 700; color: var(--text-muted); }
+    .modal-box input, .modal-box select { padding: 6px 8px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 11px; width: 100%; }
+    .modal-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
+
+    /* PURCHASE LINE ITEMS */
+    .lines-table { width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 4px; }
+    .lines-table th { background: #F1F5F9; color: var(--text-dark); text-align: left; padding: 6px 8px; font-weight: 700; border-bottom: 2px solid var(--border-color); }
+    .lines-table td { padding: 5px 6px; border-bottom: 1px solid #F1F5F9; }
+    .lines-table input, .lines-table select { width: 100%; padding: 5px 6px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 11px; }
+    .line-total-cell { font-weight: 700; color: var(--primary-blue); white-space: nowrap; }
+    .remove-line-btn { width: 22px; height: 22px; border-radius: 4px; border: 1px solid var(--border-color); background: #FEF2F2; color: var(--danger-red); cursor: pointer; font-size: 10px; }
+    .remove-line-btn:hover { background: #FEE2E2; }
+    .add-line-btn { align-self: flex-start; padding: 6px 10px; font-size: 10px; font-weight: 700; border-radius: 5px; border: 1px dashed var(--border-color); background: #F8FAFC; color: var(--primary-blue); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+    .add-line-btn:hover { background: #E2E8F0; }
+    .grand-total-row { display: flex; justify-content: flex-end; align-items: center; gap: 10px; padding: 8px 4px; border-top: 2px solid var(--border-color); margin-top: 4px; }
+    .grand-total-row .label { font-size: 11px; font-weight: 700; color: var(--text-muted); }
+    .grand-total-row .value { font-size: 16px; font-weight: 800; color: var(--success-green); }
+
+    .view-lines-table td, .view-lines-table th { padding: 6px 8px; }
+
+    .toast-stack { position: fixed; bottom: 18px; right: 18px; display: flex; flex-direction: column; gap: 8px; z-index: 999; }
+    .toast { background: var(--primary-blue); color: white; padding: 10px 16px; border-radius: 6px; font-size: 11px; font-weight: 700; box-shadow: 0 8px 20px rgba(0,0,0,.25); display: flex; align-items: center; gap: 8px; animation: toastIn .25s ease; }
+    .toast.success { background: var(--success-green); }
+    .toast.danger { background: var(--danger-red); }
+    @keyframes toastIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .toast.leaving { animation: toastOut .25s ease forwards; }
+    @keyframes toastOut { to { opacity: 0; transform: translateX(20px); } }
+  </style>
+  <script src="airtouch_store.js"></script>
+</head>
+<body>
+
+  <aside class="sidebar">
+    <div class="brand-header">
+      <i class="fa-solid fa-wifi"></i>
+      <h2>AIR TOUCH ERP</h2>
+    </div>
+
+    <nav class="nav-menu">
+      <div class="menu-group">
+        <div class="menu-header" onclick="location.href='dashboard.html'">
+          <div class="menu-header-title"><i class="fa-solid fa-house"></i> 🏠 Dashboard</div>
+        </div>
+      </div>
+
+      <div class="menu-group open">
+        <div class="menu-header" onclick="toggleMenu(this)">
+          <div class="menu-header-title"><i class="fa-solid fa-boxes-stacked"></i> 📦 Inventory</div>
+          <i class="fa-solid fa-chevron-right arrow-icon"></i>
+        </div>
+        <div class="tree-sub">
+          <div class="tree-item" onclick="location.href='store_inventory.html'">Store Stock</div>
+          <div class="tree-item active">Purchase</div>
+          <div class="tree-item" onclick="location.href='dispatch.html'">Dispatch</div>
+          <div class="tree-item" onclick="location.href='ledger.html'">Ledger</div>
+        </div>
+      </div>
+
+      <div class="menu-group">
+        <div class="menu-header" onclick="toggleMenu(this)">
+          <div class="menu-header-title"><i class="fa-solid fa-wrench"></i> 🔧 Installation</div>
+          <i class="fa-solid fa-chevron-right arrow-icon"></i>
+        </div>
+        <div class="tree-sub">
+          <div class="tree-item" onclick="location.href='installation.html'">New Installation</div>
+          <div class="tree-item" onclick="location.href='installation.html'">Installation List</div>
+          <div class="tree-item" onclick="location.href='installation.html'">Returned Material</div>
+          <div class="tree-item" onclick="location.href='installation_exchange.html'">Installation Exchange</div>
+        </div>
+      </div>
+
+      <div class="menu-group">
+        <div class="menu-header" onclick="toggleMenu(this)">
+          <div class="menu-header-title"><i class="fa-solid fa-chart-pie"></i> 📊 Reports</div>
+          <i class="fa-solid fa-chevron-right arrow-icon"></i>
+        </div>
+        <div class="tree-sub">
+          <div class="tree-item">Daily Summary</div>
+          <div class="tree-item">Monthly Report</div>
+          <div class="tree-item">City Wise Stock</div>
+        </div>
+      </div>
+
+      <div class="menu-group">
+        <div class="menu-header" onclick="location.href='employees.html'"><div class="menu-header-title"><i class="fa-solid fa-users"></i> 👨 Employees</div></div>
+      </div>
+
+      <div class="menu-group">
+        <div class="menu-header" onclick="location.href='settings.html'"><div class="menu-header-title"><i class="fa-solid fa-gear"></i> ⚙ Settings</div></div>
+      </div>
+    </nav>
+  </aside>
+
+  <main class="main-wrapper">
+
+    <header class="top-bar">
+      <div class="global-search">
+        <i class="fa-solid fa-magnifying-glass" style="color:var(--text-muted);"></i>
+        <input type="text" id="searchInput" placeholder="🔍 Search Invoice # / Supplier...">
+      </div>
+
+      <div class="top-right">
+        <div class="bell-icon" title="Notifications" id="bellBtn">
+          <i class="fa-solid fa-bell"></i>
+          <span class="bell-badge" id="bellBadge">2</span>
+        </div>
+        <div style="font-size:11px; font-weight:700; color:var(--primary-blue);">
+          <i class="fa-solid fa-user-circle"></i> Admin Profile
+        </div>
+      </div>
+    </header>
+
+    <section class="header-section">
+      <div class="breadcrumbs">
+        <span class="link" onclick="location.href='dashboard.html'">Dashboard</span> &gt;
+        <span class="link" onclick="location.href='store_inventory.html'">Inventory</span> &gt;
+        <span class="active">Purchase</span>
+      </div>
+
+      <div class="action-toolbar">
+        <button class="btn btn-purple" id="newPurchaseBtn"><i class="fa-solid fa-plus"></i> ➕ New Purchase</button>
+        <button class="btn btn-outline" id="importBtn"><i class="fa-solid fa-file-import"></i> 📥 Import Excel</button>
+        <input type="file" id="importFileInput" accept=".xlsx,.xls,.csv" style="display:none;">
+        <button class="btn btn-outline" id="exportBtn"><i class="fa-solid fa-file-export"></i> 📤 Export Excel</button>
+        <button class="btn btn-outline" id="printBtn"><i class="fa-solid fa-print"></i> 🖨 Print</button>
+        <button class="btn btn-outline" id="refreshBtn"><i class="fa-solid fa-rotate"></i> 🔄 Refresh</button>
+        <button class="btn btn-danger" id="clearDataBtn"><i class="fa-solid fa-trash-can"></i> 🗑 Clear Data</button>
+      </div>
+    </section>
+
+    <div class="content-body">
+
+      <section class="metrics-grid" id="metricsGrid">
+        <div class="metric-card"><label>🧾 Total Invoices</label><h3 id="mTotalInvoices">0</h3></div>
+        <div class="metric-card"><label>💰 Total Purchase Value</label><h3 style="color:var(--success-green);" id="mTotalValue">PKR 0</h3></div>
+        <div class="metric-card"><label>📦 Total Qty Purchased</label><h3 id="mTotalQty">0</h3></div>
+        <div class="metric-card"><label>📅 This Month</label><h3 id="mMonthValue">PKR 0</h3></div>
+        <div class="metric-card"><label>📊 Avg Invoice Value</label><h3 id="mAvgValue">PKR 0</h3></div>
+        <div class="metric-card"><label>🏭 Suppliers Used</label><h3 id="mSuppliers">0</h3></div>
+      </section>
+
+      <div class="dashboard-grid">
+
+        <section class="panel-card">
+          <div class="panel-header">
+            <h3><i class="fa-solid fa-file-invoice"></i> Purchase Invoices</h3>
+            <span style="font-size:10px; color:var(--text-muted);">Every save updates stock via the ledger</span>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Invoice #</th>
+                <th>Supplier</th>
+                <th>Date</th>
+                <th>Items</th>
+                <th>Total Qty</th>
+                <th>Grand Total</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="purchasesBody"></tbody>
+          </table>
+        </section>
+
+        <section class="panel-card">
+          <div class="panel-header">
+            <h3><i class="fa-solid fa-clock"></i> Recent Purchase Activity</h3>
+          </div>
+
+          <div class="timeline" id="timelineList"></div>
+        </section>
+
+      </div>
+
+    </div>
+  </main>
+
+  <!-- NEW PURCHASE MODAL -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal-box wide">
+      <h3 id="modalTitle"><i class="fa-solid fa-file-invoice"></i> New Purchase Invoice</h3>
+
+      <div class="modal-row">
+        <div>
+          <label>Supplier</label>
+          <input type="text" id="mSupplier" placeholder="e.g. FiberHome Vendor (optional)">
+        </div>
+        <div>
+          <label>Invoice Number</label>
+          <input type="text" id="mInvoiceNum" placeholder="e.g. PUR-2026-004">
+        </div>
+        <div>
+          <label>Purchase Date</label>
+          <input type="date" id="mDate">
+        </div>
+      </div>
+
+      <label style="margin-top:6px;">Items</label>
+      <table class="lines-table" id="linesTable">
+        <thead>
+          <tr>
+            <th style="width:34%;">Item</th>
+            <th style="width:14%;">Qty</th>
+            <th style="width:18%;">Unit Cost</th>
+            <th style="width:18%;">Line Total</th>
+            <th style="width:6%;"></th>
+          </tr>
+        </thead>
+        <tbody id="linesBody"></tbody>
+      </table>
+      <button class="add-line-btn" id="addLineBtn"><i class="fa-solid fa-plus"></i> Add Item Line</button>
+
+      <div class="grand-total-row">
+        <span class="label">Grand Total</span>
+        <span class="value" id="grandTotalDisplay">PKR 0</span>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn btn-outline" id="modalCancelBtn">Cancel</button>
+        <button class="btn btn-purple" id="modalSaveBtn"><i class="fa-solid fa-check"></i> <span id="modalSaveBtnText">Save Purchase</span></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- VIEW INVOICE MODAL -->
+  <div class="modal-overlay" id="viewOverlay">
+    <div class="modal-box wide">
+      <h3><i class="fa-solid fa-eye"></i> Invoice Detail — <span id="viewInvoiceNum"></span></h3>
+      <div class="modal-row" style="grid-template-columns: 1fr 1fr;">
+        <div><label>Supplier</label><div id="viewSupplier" style="font-size:12px; font-weight:700; margin-top:4px;"></div></div>
+        <div><label>Date</label><div id="viewDate" style="font-size:12px; font-weight:700; margin-top:4px;"></div></div>
+      </div>
+
+      <table class="lines-table view-lines-table">
+        <thead>
+          <tr><th>Item Code</th><th>Item Name</th><th>Qty</th><th>Unit Cost</th><th>Line Total</th></tr>
+        </thead>
+        <tbody id="viewLinesBody"></tbody>
+      </table>
+
+      <div class="grand-total-row">
+        <span class="label">Grand Total</span>
+        <span class="value" id="viewGrandTotal">PKR 0</span>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn btn-outline" id="viewCloseBtn">Close</button>
+        <button class="btn btn-purple" id="viewPrintBtn"><i class="fa-solid fa-print"></i> Print</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-stack" id="toastStack"></div>
+
+  <script>
+    function toggleMenu(element) {
+      element.parentElement.classList.toggle('open');
+    }
+
+    /* ---------------- MOCK MASTER DATA (mirrors items table) ---------------- */
+    // Supplier used to be locked to a fixed dropdown list here. It's now a free-text
+    // field stored directly on each invoice (p.supplier) — the user can type any
+    // name, or leave it blank/nil, instead of only picking from a fixed set.
+
+    // stock here mirrors items.available_stock — a saved purchase bumps it,
+    // exactly like execute_inventory_transaction() does on the backend.
+    function getStockItems() { return AirTouchStore.getItems().map(i => ({ id: i.id, code: i.code, name: i.name, stock: i.stock, purchase: i.purchase })); }
+    let stockItems = getStockItems();
+
+    /* ---------------- MOCK PURCHASE INVOICES (mirrors purchase_headers + purchase_details) ---------------- */
+    let purchases = [
+      {
+        id: 1, invoice_num: 'PUR-2026-001', supplier: 'FiberHome Vendor', date: '2026-07-15',
+        lines: [
+          { item_id: 1, qty: 40, unit_cost: 3200 },
+          { item_id: 4, qty: 20, unit_cost: 1750 },
+        ]
+      },
+      {
+        id: 2, invoice_num: 'PUR-2026-002', supplier: 'Huawei Direct', date: '2026-07-18',
+        lines: [ { item_id: 3, qty: 10, unit_cost: 4500 } ]
+      },
+      {
+        id: 3, invoice_num: 'PUR-2026-003', supplier: 'Local Vendor', date: '2026-07-20',
+        lines: [ { item_id: 5, qty: 30, unit_cost: 310 }, { item_id: 2, qty: 15, unit_cost: 2900 } ]
+      },
+    ];
+
+    // Restore stock levels + invoices saved earlier in this browser so a page
+    // refresh doesn't wipe out purchases the user entered, or reset stock.
+    const PURCHASES_STORAGE_KEY = 'airtouch_purchase_purchases';
+    (function loadSavedPurchaseData(){
+      // Stock always comes fresh from AirTouchStore (single source of truth) —
+      // no separate stock key here, so this page can never drift out of sync
+      // with store_inventory.html / ledger.html.
+      try {
+        const savedPurchases = localStorage.getItem(PURCHASES_STORAGE_KEY);
+        if (savedPurchases) { const parsed = JSON.parse(savedPurchases); if (Array.isArray(parsed)) purchases = parsed; }
+      } catch (e) { /* ignore corrupted storage */ }
+    })();
+    function persistPurchaseData(){
+      // Stock is saved via AirTouchStore automatically (recordPurchase/updateItem).
+      // The invoice list itself still needs saving so it survives a refresh.
+      try { localStorage.setItem(PURCHASES_STORAGE_KEY, JSON.stringify(purchases)); } catch (e) { /* ignore quota errors */ }
+    }
+
+    function toISODate(value){
+      if (!value) return new Date().toISOString().slice(0,10);
+      if (value instanceof Date && !isNaN(value)) return value.toISOString().slice(0,10);
+      const parsed = new Date(value);
+      return isNaN(parsed) ? new Date().toISOString().slice(0,10) : parsed.toISOString().slice(0,10);
+    }
+    function money(n){ return 'PKR ' + Number(n || 0).toLocaleString(undefined, {maximumFractionDigits: 2}); }
+    function supplierLabel(p){ const s = (p.supplier || '').trim(); return s || 'N/A'; }
+    function itemById(id){ return stockItems.find(i => i.id === id); }
+    function lineTotal(l){ return (Number(l.qty)||0) * (Number(l.unit_cost)||0); }
+    function invoiceTotal(p){ return p.lines.reduce((s,l) => s + lineTotal(l), 0); }
+    function invoiceQty(p){ return p.lines.reduce((s,l) => s + (Number(l.qty)||0), 0); }
+
+    /* ---------------- RENDER: INVOICES TABLE ---------------- */
+    function renderPurchases(filter){
+      persistPurchaseData();
+      const body = document.getElementById('purchasesBody');
+      const q = (filter || '').toLowerCase();
+      const rows = purchases
+        .filter(p => !q || p.invoice_num.toLowerCase().includes(q) || supplierLabel(p).toLowerCase().includes(q))
+        .sort((a,b) => b.id - a.id);
+
+      body.innerHTML = rows.map(p => `
+        <tr data-id="${p.id}">
+          <td><code>${p.invoice_num}</code></td>
+          <td><strong>${supplierLabel(p)}</strong></td>
+          <td>${toISODate(p.date)}</td>
+          <td>${p.lines.length}</td>
+          <td>${invoiceQty(p).toLocaleString()}</td>
+          <td><strong>${money(invoiceTotal(p))}</strong></td>
+          <td><span class="badge-success">🟢 Posted</span></td>
+          <td>
+            <div class="row-actions">
+              <button class="btn-icon" title="View" data-action="view"><i class="fa-solid fa-eye"></i></button>
+              <button class="btn-icon" style="color:var(--primary-blue)" title="Edit" data-action="edit"><i class="fa-solid fa-pen"></i></button>
+              <button class="btn-icon" style="color:var(--danger-red)" title="Delete / Reverse" data-action="delete"><i class="fa-solid fa-trash"></i></button>
+            </div>
+          </td>
+        </tr>
+      `).join('') || `<tr><td colspan="8" style="text-align:center; color:var(--text-muted); padding:16px;">No purchase invoices match your search</td></tr>`;
+
+      body.querySelectorAll('button[data-action]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const id = Number(btn.closest('tr').dataset.id);
+          const action = btn.dataset.action;
+          if (action === 'view') openViewModal(id);
+          else if (action === 'edit') openEditPurchaseModal(id);
+          else if (action === 'delete') deletePurchase(id);
+        });
+      });
+
+      updateMetrics();
+    }
+
+    function updateMetrics(){
+      const totalInvoices = purchases.length;
+      const totalValue = purchases.reduce((s,p) => s + invoiceTotal(p), 0);
+      const totalQty = purchases.reduce((s,p) => s + invoiceQty(p), 0);
+      const now = new Date();
+      const monthValue = purchases
+        .filter(p => { const d = new Date(p.date); return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth(); })
+        .reduce((s,p) => s + invoiceTotal(p), 0);
+      const avgValue = totalInvoices ? totalValue / totalInvoices : 0;
+      const supplierCount = new Set(purchases.map(p => (p.supplier || '').trim()).filter(Boolean)).size;
+
+      document.getElementById('mTotalInvoices').textContent = totalInvoices;
+      document.getElementById('mTotalValue').textContent = money(totalValue);
+      document.getElementById('mTotalQty').textContent = totalQty.toLocaleString();
+      document.getElementById('mMonthValue').textContent = money(monthValue);
+      document.getElementById('mAvgValue').textContent = money(avgValue);
+      document.getElementById('mSuppliers').textContent = supplierCount;
+    }
+
+    /* ---------------- RENDER: ACTIVITY TIMELINE ---------------- */
+    function renderTimeline(){
+      const list = document.getElementById('timelineList');
+      const recent = [...purchases].sort((a,b) => b.id - a.id).slice(0, 6);
+      list.innerHTML = recent.map(p => `
+        <div class="timeline-item">
+          <span class="time-badge">${toISODate(p.date).slice(5)}</span>
+          <div>
+            <strong>Purchase — ${p.invoice_num}</strong>
+            <p style="color:var(--text-muted); font-size:10px;">+${invoiceQty(p)} Pcs from ${supplierLabel(p)} • ${money(invoiceTotal(p))}</p>
+          </div>
+        </div>
+      `).join('') || `<p style="padding:12px; color:var(--text-muted); font-size:11px;">No purchases recorded yet</p>`;
+    }
+
+    /* ---------------- SEARCH ---------------- */
+    document.getElementById('searchInput').addEventListener('input', (e) => renderPurchases(e.target.value));
+
+    /* ---------------- NEW PURCHASE MODAL ---------------- */
+    const overlay = document.getElementById('modalOverlay');
+    let lineSeq = 0;
+
+    function nextInvoiceNum(){
+      const year = new Date().getFullYear();
+      const n = purchases.length + 1;
+      return `PUR-${year}-${String(n).padStart(3, '0')}`;
+    }
+
+    function itemOptionsHtml(selectedId){
+      return stockItems.map(i => `<option value="${i.id}" ${i.id === selectedId ? 'selected' : ''}>${i.code} — ${i.name}</option>`).join('');
+    }
+
+    function addLineRow(prefill){
+      const id = ++lineSeq;
+      const body = document.getElementById('linesBody');
+      const tr = document.createElement('tr');
+      tr.dataset.lineId = id;
+      const defaultItem = prefill ? itemById(prefill.item_id) : stockItems[0];
+      const qty = prefill ? prefill.qty : 1;
+      const unitCost = prefill ? prefill.unit_cost : (defaultItem ? defaultItem.purchase : 0);
+      tr.innerHTML = `
+        <td><select class="line-item">${itemOptionsHtml(defaultItem ? defaultItem.id : null)}</select></td>
+        <td><input type="number" class="line-qty" min="1" value="${qty}"></td>
+        <td><input type="number" class="line-cost" min="0" step="0.01" value="${unitCost}"></td>
+        <td class="line-total-cell">${money(qty * unitCost)}</td>
+        <td><button class="remove-line-btn" title="Remove"><i class="fa-solid fa-xmark"></i></button></td>
+      `;
+      body.appendChild(tr);
+
+      const recompute = () => {
+        const q = Number(tr.querySelector('.line-qty').value) || 0;
+        const c = Number(tr.querySelector('.line-cost').value) || 0;
+        tr.querySelector('.line-total-cell').textContent = money(q * c);
+        updateGrandTotalDisplay();
+      };
+      tr.querySelector('.line-item').addEventListener('change', (e) => {
+        const it = itemById(Number(e.target.value));
+        if (it) { tr.querySelector('.line-cost').value = it.purchase; recompute(); }
+      });
+      tr.querySelector('.line-qty').addEventListener('input', recompute);
+      tr.querySelector('.line-cost').addEventListener('input', recompute);
+      tr.querySelector('.remove-line-btn').addEventListener('click', () => {
+        if (document.querySelectorAll('#linesBody tr').length <= 1){ showToast('An invoice needs at least one item line', 'danger'); return; }
+        tr.remove();
+        updateGrandTotalDisplay();
+      });
+    }
+
+    function updateGrandTotalDisplay(){
+      let total = 0;
+      document.querySelectorAll('#linesBody tr').forEach(tr => {
+        const q = Number(tr.querySelector('.line-qty').value) || 0;
+        const c = Number(tr.querySelector('.line-cost').value) || 0;
+        total += q * c;
+      });
+      document.getElementById('grandTotalDisplay').textContent = money(total);
+    }
+
+    // null = creating a new invoice; set to a purchase id when the Edit (✏️) button opens the modal
+    let editingPurchaseId = null;
+
+    function openNewPurchaseModal(){
+      editingPurchaseId = null;
+      document.getElementById('modalTitle').innerHTML = '<i class="fa-solid fa-file-invoice"></i> New Purchase Invoice';
+      document.getElementById('modalSaveBtnText').textContent = 'Save Purchase';
+      document.getElementById('mSupplier').value = '';
+      document.getElementById('mInvoiceNum').value = nextInvoiceNum();
+      document.getElementById('mInvoiceNum').disabled = false;
+      document.getElementById('mDate').value = toISODate(new Date());
+      document.getElementById('linesBody').innerHTML = '';
+      lineSeq = 0;
+      addLineRow(null);
+      updateGrandTotalDisplay();
+      overlay.classList.add('show');
+    }
+
+    // Opens the same small modal window, but pre-filled with the invoice's existing
+    // supplier/date/lines so the user can edit them in place instead of retyping.
+    function openEditPurchaseModal(id){
+      const p = purchases.find(p => p.id === id);
+      if (!p) return;
+
+      editingPurchaseId = id;
+      document.getElementById('modalTitle').innerHTML = `<i class="fa-solid fa-pen"></i> Edit Purchase Invoice — ${p.invoice_num}`;
+      document.getElementById('modalSaveBtnText').textContent = 'Update Purchase';
+
+      document.getElementById('mSupplier').value = p.supplier || '';
+      document.getElementById('mInvoiceNum').value = p.invoice_num;
+      document.getElementById('mInvoiceNum').disabled = true; // invoice # stays fixed while editing
+      document.getElementById('mDate').value = toISODate(p.date);
+
+      document.getElementById('linesBody').innerHTML = '';
+      lineSeq = 0;
+      p.lines.forEach(l => addLineRow({ item_id: l.item_id, qty: l.qty, unit_cost: l.unit_cost }));
+      updateGrandTotalDisplay();
+
+      overlay.classList.add('show');
+    }
+
+    document.getElementById('newPurchaseBtn').onclick = openNewPurchaseModal;
+    document.getElementById('addLineBtn').onclick = () => addLineRow(null);
+    function closePurchaseModal(){
+      overlay.classList.remove('show');
+      editingPurchaseId = null;
+      document.getElementById('mInvoiceNum').disabled = false;
+    }
+    document.getElementById('modalCancelBtn').onclick = closePurchaseModal;
+    overlay.addEventListener('click', e => { if (e.target === overlay) closePurchaseModal(); });
+
+    document.getElementById('modalSaveBtn').onclick = () => {
+      const supplier = document.getElementById('mSupplier').value.trim(); // optional — can be left blank/nil
+      const invoiceNum = document.getElementById('mInvoiceNum').value.trim();
+      const date = document.getElementById('mDate').value || toISODate(new Date());
+
+      if (!invoiceNum){ showToast('Invoice number is required', 'danger'); return; }
+      // Duplicate check should ignore the invoice we're currently editing
+      if (purchases.some(p => p.invoice_num.toLowerCase() === invoiceNum.toLowerCase() && p.id !== editingPurchaseId)){
+        showToast(`Invoice '${invoiceNum}' has already been recorded`, 'danger');
+        return;
+      }
+
+      const lines = [];
+      let invalid = false;
+      document.querySelectorAll('#linesBody tr').forEach(tr => {
+        const itemId = Number(tr.querySelector('.line-item').value);
+        const qty = Number(tr.querySelector('.line-qty').value);
+        const unitCost = Number(tr.querySelector('.line-cost').value);
+        if (!itemId || !qty || qty <= 0 || unitCost < 0 || isNaN(unitCost)) { invalid = true; return; }
+        lines.push({ item_id: itemId, qty, unit_cost: unitCost });
+      });
+
+      if (invalid || lines.length === 0){
+        showToast('Every line needs a valid item, qty > 0, and a non-negative unit cost', 'danger');
+        return;
+      }
+
+      if (editingPurchaseId === null){
+        // ---- CREATE MODE ----
+        // Post the invoice into AirTouchStore itself (not a local copy). This
+        // bumps item.stock, writes a PURCHASE row into the shared ledger, and
+        // saves to localStorage — so store_inventory.html and ledger.html see
+        // it immediately too.
+        const storeLines = lines.map(l => ({ itemId: l.item_id, qty: l.qty, unitCost: l.unit_cost }));
+        AirTouchStore.recordPurchase(supplier, invoiceNum, date, storeLines, '');
+        stockItems = getStockItems(); // refresh local view from the shared store
+
+        const newPurchase = { id: (purchases.length ? Math.max(...purchases.map(p=>p.id)) : 0) + 1, invoice_num: invoiceNum, supplier, date, lines };
+        purchases.push(newPurchase);
+        persistPurchaseData();
+
+        overlay.classList.remove('show');
+        renderPurchases(document.getElementById('searchInput').value);
+        renderTimeline();
+        showToast(`${invoiceNum} posted — ${invoiceQty(newPurchase)} Pcs added to stock`, 'success');
+      } else {
+        // ---- UPDATE MODE ----
+        const p = purchases.find(p => p.id === editingPurchaseId);
+        if (!p) { overlay.classList.remove('show'); return; }
+
+        // Reverse the stock effect of the OLD lines first, then apply the NEW
+        // lines — directly on AirTouchStore's items, so the shared store always
+        // reflects exactly what's on the invoice, even if items/qty changed.
+        p.lines.forEach(l => {
+          const item = AirTouchStore.getItemById(l.item_id);
+          if (item) AirTouchStore.updateItem(item.id, { stock: Math.max(0, item.stock - l.qty), updated: date });
+        });
+        lines.forEach(l => {
+          const item = AirTouchStore.getItemById(l.item_id);
+          if (item) AirTouchStore.updateItem(item.id, { stock: item.stock + l.qty, purchase: l.unit_cost, updated: date });
+        });
+        stockItems = getStockItems(); // refresh local view from the shared store
+
+        p.supplier = supplier;
+        p.date = date;
+        p.lines = lines;
+        // invoice_num is locked while editing, so p.invoice_num is left as-is
+        persistPurchaseData();
+
+        overlay.classList.remove('show');
+        editingPurchaseId = null;
+        renderPurchases(document.getElementById('searchInput').value);
+        renderTimeline();
+        showToast(`${p.invoice_num} updated — stock adjusted`, 'success');
+      }
+    };
+
+    /* ---------------- VIEW INVOICE MODAL ---------------- */
+    const viewOverlay = document.getElementById('viewOverlay');
+    function openViewModal(id){
+      const p = purchases.find(p => p.id === id);
+      if (!p) return;
+      document.getElementById('viewInvoiceNum').textContent = p.invoice_num;
+      document.getElementById('viewSupplier').textContent = supplierLabel(p);
+      document.getElementById('viewDate').textContent = toISODate(p.date);
+      document.getElementById('viewLinesBody').innerHTML = p.lines.map(l => {
+        const it = itemById(l.item_id);
+        return `<tr>
+          <td><code>${it ? it.code : l.item_id}</code></td>
+          <td>${it ? it.name : 'Unknown Item'}</td>
+          <td>${l.qty}</td>
+          <td>${money(l.unit_cost)}</td>
+          <td class="line-total-cell">${money(lineTotal(l))}</td>
+        </tr>`;
+      }).join('');
+      document.getElementById('viewGrandTotal').textContent = money(invoiceTotal(p));
+      viewOverlay.classList.add('show');
+    }
+    document.getElementById('viewCloseBtn').onclick = () => viewOverlay.classList.remove('show');
+    document.getElementById('viewPrintBtn').onclick = () => window.print();
+    viewOverlay.addEventListener('click', e => { if (e.target === viewOverlay) viewOverlay.classList.remove('show'); });
+
+    /* ---------------- DELETE / REVERSE ---------------- */
+    function deletePurchase(id){
+      const p = purchases.find(p => p.id === id);
+      if (!p) return;
+      const row = document.querySelector(`tr[data-id="${id}"]`);
+      if (row) row.classList.add('removing');
+      setTimeout(() => {
+        // Reverse the stock movement on the shared store, same as the ledger would on a void.
+        p.lines.forEach(l => {
+          const item = AirTouchStore.getItemById(l.item_id);
+          if (item) AirTouchStore.updateItem(item.id, { stock: Math.max(0, item.stock - l.qty), updated: toISODate(new Date()) });
+        });
+        stockItems = getStockItems();
+        purchases = purchases.filter(x => x.id !== id);
+        persistPurchaseData();
+        renderPurchases(document.getElementById('searchInput').value);
+        renderTimeline();
+        showToast(`${p.invoice_num} deleted — stock reversed`, 'danger');
+      }, 200);
+    }
+
+    /* ---------------- TOOLBAR ---------------- */
+    document.getElementById('refreshBtn').onclick = () => { renderPurchases(''); document.getElementById('searchInput').value=''; showToast('Purchases refreshed', 'success'); };
+
+    document.getElementById('clearDataBtn').onclick = () => {
+      if (!purchases.length) { showToast('No purchase invoices to clear', ''); return; }
+      if (!confirm('Clear all purchase invoices? Stock added by these invoices will be reversed. This only clears this table in your browser and cannot be undone.')) return;
+      purchases.forEach(p => p.lines.forEach(l => {
+        const item = AirTouchStore.getItemById(l.item_id);
+        if (item) AirTouchStore.updateItem(item.id, { stock: Math.max(0, item.stock - l.qty), updated: toISODate(new Date()) });
+      }));
+      stockItems = getStockItems();
+      purchases = [];
+      persistPurchaseData();
+      renderPurchases('');
+      renderTimeline();
+      document.getElementById('searchInput').value = '';
+      showToast('Purchase invoices cleared — stock reversed', 'danger');
+    };
+    document.getElementById('printBtn').onclick = () => window.print();
+
+    /* ---------------- IMPORT (reads the same layout the Export button writes —
+       title/subtitle banner rows, header row, invoice-grouped line rows, TOTAL
+       row — and posts each invoice through the exact same flow as a manual
+       "New Purchase" save, so stock, ledger, and everything downstream updates
+       automatically instead of just adding rows to this table.) ---------------- */
+    const IMPORT_HEADER_ALIASES = {
+      invoice:  ['invoice#', 'invoicenum', 'invoicenumber', 'invoice'],
+      supplier: ['supplier', 'vendor'],
+      date:     ['purchasedate', 'date'],
+      code:     ['itemcode', 'code', 'sku'],
+      name:     ['itemname', 'name', 'description', 'product'],
+      qty:      ['qty', 'quantity'],
+      cost:     ['unitcost', 'cost', 'purchaseprice', 'unitprice'],
+    };
+    function normalizeImportHeader(h){ return String(h || '').toLowerCase().replace(/[\s_\-#]/g, ''); }
+    function buildImportFieldMap(headerRow){
+      const map = {};
+      headerRow.forEach((raw, idx) => {
+        const norm = normalizeImportHeader(raw);
+        for (const [field, aliases] of Object.entries(IMPORT_HEADER_ALIASES)) {
+          if (aliases.includes(norm)) { map[idx] = field; break; }
+        }
+      });
+      return map;
+    }
+    function parseImportedPurchaseDate(value){
+      if (value instanceof Date && !isNaN(value)) return toISODate(value);
+      if (typeof value === 'number') {
+        const parsed = XLSX.SSF.parse_date_code(value);
+        if (parsed) return toISODate(new Date(Date.UTC(parsed.y, parsed.m - 1, parsed.d)));
+      }
+      if (typeof value === 'string' && value.trim()) return toISODate(value.trim());
+      return toISODate(new Date());
+    }
+    // Finds the real header row even though Export puts a merged title + subtitle
+    // banner above it — instead of assuming row 0, scan for the row that actually
+    // contains recognizable "Invoice #" / "Item Code" style column names.
+    function findImportHeaderRowIndex(grid){
+      for (let r = 0; r < Math.min(grid.length, 10); r++) {
+        const map = buildImportFieldMap(grid[r]);
+        if (Object.values(map).includes('invoice') && Object.values(map).includes('code')) return r;
+      }
+      return -1;
+    }
+
+    document.getElementById('importBtn').onclick = () => document.getElementById('importFileInput').click();
+
+    document.getElementById('importFileInput').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        try {
+          const workbook = XLSX.read(evt.target.result, { type: 'array', cellDates: true });
+          const sheet = workbook.Sheets[workbook.SheetNames[0]];
+          const grid = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true, defval: '' });
+          if (!grid.length) { showToast('That file has no rows to import', 'danger'); return; }
+
+          const headerRowIdx = findImportHeaderRowIndex(grid);
+          if (headerRowIdx === -1) {
+            showToast('Import failed: could not find "Invoice #" and "Item Code" columns', 'danger');
+            return;
+          }
+          const fieldMap = buildImportFieldMap(grid[headerRowIdx]);
+
+          // Group data rows by invoice number, in file order.
+          const invoiceOrder = [];
+          const invoiceGroups = {};
+          for (let r = headerRowIdx + 1; r < grid.length; r++) {
+            const row = grid[r];
+            if (!row || row.every(c => c === '' || c === null || c === undefined)) continue;
+
+            const rec = {};
+            Object.entries(fieldMap).forEach(([idx, field]) => { rec[field] = row[idx]; });
+            const invoiceNum = String(rec.invoice || '').trim();
+            if (!invoiceNum || invoiceNum.toUpperCase() === 'TOTAL') continue; // skip the totals row
+
+            const code = String(rec.code || '').trim();
+            const qty = Number(rec.qty);
+            if (!code || !qty || qty <= 0) continue; // skip malformed/blank lines
+
+            if (!invoiceGroups[invoiceNum]) {
+              invoiceGroups[invoiceNum] = {
+                invoice_num: invoiceNum,
+                supplier: String(rec.supplier || '').trim(),
+                date: parseImportedPurchaseDate(rec.date),
+                lines: [],
+              };
+              invoiceOrder.push(invoiceNum);
+            }
+            invoiceGroups[invoiceNum].lines.push({ code, qty, unit_cost: Number(rec.cost) || 0 });
+          }
+
+          if (!invoiceOrder.length) { showToast('No valid invoice rows found in that file', 'danger'); return; }
+
+          let invoicesAdded = 0, invoicesSkippedDuplicate = 0, linesSkippedUnknownItem = 0, invoicesSkippedNoLines = 0;
+
+          invoiceOrder.forEach(invNum => {
+            const grp = invoiceGroups[invNum];
+
+            // Don't re-post an invoice that's already in the system — recordPurchase
+            // would double the stock every time the same file gets imported again.
+            if (purchases.some(p => p.invoice_num.toLowerCase() === invNum.toLowerCase())) {
+              invoicesSkippedDuplicate++;
+              return;
+            }
+
+            // Resolve each line's Item Code against the real store inventory so we
+            // never invent a phantom item_id — unmatched codes are dropped and counted.
+            const resolvedLines = [];
+            grp.lines.forEach(l => {
+              const item = stockItems.find(i => i.code.toLowerCase() === l.code.toLowerCase());
+              if (!item) { linesSkippedUnknownItem++; return; }
+              resolvedLines.push({ item_id: item.id, qty: l.qty, unit_cost: l.unit_cost });
+            });
+
+            if (!resolvedLines.length) { invoicesSkippedNoLines++; return; }
+
+            // Post through AirTouchStore exactly like a manual save does — this is
+            // what actually bumps stock and writes the shared ledger entry, so the
+            // process runs all the way through instead of stopping at this table.
+            const storeLines = resolvedLines.map(l => ({ itemId: l.item_id, qty: l.qty, unitCost: l.unit_cost }));
+            AirTouchStore.recordPurchase(grp.supplier, grp.invoice_num, grp.date, storeLines, '');
+
+            const newPurchase = {
+              id: (purchases.length ? Math.max(...purchases.map(p => p.id)) : 0) + 1,
+              invoice_num: grp.invoice_num, supplier: grp.supplier, date: grp.date, lines: resolvedLines,
+            };
+            purchases.push(newPurchase);
+            invoicesAdded++;
+          });
+
+          stockItems = getStockItems(); // refresh local view from the shared store
+          persistPurchaseData();
+          renderPurchases(document.getElementById('searchInput').value);
+          renderTimeline();
+
+          const notes = [];
+          if (invoicesSkippedDuplicate) notes.push(`${invoicesSkippedDuplicate} duplicate invoice(s) skipped`);
+          if (invoicesSkippedNoLines) notes.push(`${invoicesSkippedNoLines} invoice(s) skipped (no matching items)`);
+          if (linesSkippedUnknownItem) notes.push(`${linesSkippedUnknownItem} line(s) skipped (item code not in Store Stock)`);
+
+          if (invoicesAdded) {
+            showToast(`Import done — ${invoicesAdded} invoice(s) posted, stock updated${notes.length ? ' • ' + notes.join(', ') : ''}`, 'success');
+          } else {
+            showToast(`Nothing imported${notes.length ? ' — ' + notes.join(', ') : ''}`, 'danger');
+          }
+        } catch (err) {
+          showToast('Import failed: file could not be read as Excel/CSV', 'danger');
+        } finally {
+          e.target.value = ''; // allow re-selecting the same file later
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    });
+
+    /* ---------------- EXPORT (styled .xlsx — branded banner, colored header, invoice-grouped banding, totals) ---------------- */
+    document.getElementById('exportBtn').onclick = () => {
+      const COLS = 8; // Invoice #, Supplier, Purchase Date, Item Code, Item Name, Qty, Unit Cost, Line Total
+      const HEADERS = ['Invoice #', 'Supplier', 'Purchase Date', 'Item Code', 'Item Name', 'Qty', 'Unit Cost', 'Line Total'];
+
+      // Brand palette pulled from this page's own CSS variables, so the exported
+      // file visually matches the app instead of looking like a generic dump.
+      const NAVY = '146C2E', WHITE = 'FFFFFF', TEXT_DARK = '1E293B', BORDER = 'CBD5E1', BAND = 'F0F4F8';
+
+      const thinBorder = { style: 'thin', color: { rgb: BORDER } };
+      const borderAll = { top: thinBorder, bottom: thinBorder, left: thinBorder, right: thinBorder };
+
+      const titleStyle = { font: { name: 'Calibri', sz: 16, bold: true, color: { rgb: WHITE } }, fill: { fgColor: { rgb: NAVY } }, alignment: { horizontal: 'center', vertical: 'center' } };
+      const subtitleStyle = { font: { name: 'Calibri', sz: 10, italic: true, color: { rgb: '64748B' } }, alignment: { horizontal: 'center' } };
+      const headerStyle = { font: { name: 'Calibri', sz: 11, bold: true, color: { rgb: WHITE } }, fill: { fgColor: { rgb: NAVY } }, alignment: { horizontal: 'center', vertical: 'center' }, border: borderAll };
+      const totalStyle = { font: { name: 'Calibri', sz: 11, bold: true, color: { rgb: WHITE } }, fill: { fgColor: { rgb: NAVY } }, alignment: { horizontal: 'center', vertical: 'center' }, border: borderAll };
+
+      function rowStyle(bandFill, colIndex) {
+        const isNumericCol = colIndex === 5 || colIndex === 6 || colIndex === 7;
+        return {
+          font: { name: 'Calibri', sz: 10.5, color: { rgb: TEXT_DARK } },
+          fill: { fgColor: { rgb: bandFill ? BAND : WHITE } },
+          alignment: { horizontal: isNumericCol ? 'center' : (colIndex === 4 ? 'left' : 'center'), vertical: 'center' },
+          border: borderAll,
+        };
+      }
+
+      // Flatten invoices to line rows, but band shading by invoice (not by row) so a
+      // multi-item invoice visually groups together instead of striping mid-invoice.
+      const flatRows = [];
+      purchases.forEach(p => {
+        p.lines.forEach(l => {
+          const it = itemById(l.item_id);
+          flatRows.push({
+            invoice: p.invoice_num, supplier: supplierLabel(p), date: p.date,
+            code: it ? it.code : l.item_id, name: it ? it.name : '', qty: l.qty,
+            cost: l.unit_cost, total: lineTotal(l),
+          });
+        });
+      });
+
+      const aoa = [];
+      aoa.push(['Air Touch Enterprise — Purchase Invoices Report', '', '', '', '', '', '', '']);
+      aoa.push([`Generated on ${toISODate(new Date())}  •  ${purchases.length} invoices  •  ${flatRows.length} line items`, '', '', '', '', '', '', '']);
+      aoa.push(HEADERS);
+      flatRows.forEach(r => aoa.push([r.invoice, r.supplier, new Date(toISODate(r.date)), r.code, r.name, r.qty, r.cost, r.total]));
+      const totalQty = flatRows.reduce((s, r) => s + (Number(r.qty) || 0), 0);
+      const totalValue = flatRows.reduce((s, r) => s + (Number(r.total) || 0), 0);
+      const totalsRowIndex = 3 + flatRows.length;
+      aoa.push(['TOTAL', '', '', '', '', totalQty, '', totalValue]);
+
+      const worksheet = XLSX.utils.aoa_to_sheet(aoa);
+      worksheet['!cols'] = [{wch:14},{wch:20},{wch:14},{wch:12},{wch:26},{wch:8},{wch:12},{wch:14}];
+      worksheet['!rows'] = [{hpt:26},{hpt:16}];
+      worksheet['!merges'] = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: COLS - 1 } },
+        { s: { r: 1, c: 0 }, e: { r: 1, c: COLS - 1 } },
+      ];
+      worksheet['!freeze'] = { xSplit: 0, ySplit: 3 };
+      worksheet['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 2, c: 0 }, e: { r: totalsRowIndex - 1, c: COLS - 1 } }) };
+
+      for (let c = 0; c < COLS; c++) {
+        const t = XLSX.utils.encode_cell({ r: 0, c });
+        if (worksheet[t]) worksheet[t].s = titleStyle;
+        const s = XLSX.utils.encode_cell({ r: 1, c });
+        if (worksheet[s]) worksheet[s].s = subtitleStyle;
+      }
+      for (let c = 0; c < COLS; c++) {
+        const ref = XLSX.utils.encode_cell({ r: 2, c });
+        if (worksheet[ref]) worksheet[ref].s = headerStyle;
+      }
+      let band = false, lastInvoice = null;
+      flatRows.forEach((row, idx) => {
+        if (row.invoice !== lastInvoice) { band = !band; lastInvoice = row.invoice; }
+        const r = 3 + idx;
+        for (let c = 0; c < COLS; c++) {
+          const ref = XLSX.utils.encode_cell({ r, c });
+          if (!worksheet[ref]) continue;
+          worksheet[ref].s = rowStyle(band, c);
+          if (c === 2) worksheet[ref].z = 'yyyy-mm-dd';
+          if (c === 6 || c === 7) worksheet[ref].z = '#,##0';
+        }
+      });
+      for (let c = 0; c < COLS; c++) {
+        const ref = XLSX.utils.encode_cell({ r: totalsRowIndex, c });
+        if (!worksheet[ref]) continue;
+        worksheet[ref].s = totalStyle;
+        if (c === 7) worksheet[ref].z = '#,##0';
+      }
+
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Purchases');
+      XLSX.writeFile(workbook, `purchase_invoices_export_${toISODate(new Date())}.xlsx`);
+      showToast('Purchases exported as a designed Excel (.xlsx)', 'success');
+    };
+
+    /* ---------------- NOTIFICATIONS ---------------- */
+    document.getElementById('bellBtn').onclick = () => {
+      document.getElementById('bellBadge').style.display = 'none';
+      showToast('2 pending supplier confirmations reviewed', '');
+    };
+
+    /* ---------------- TOASTS ---------------- */
+    function showToast(msg, kind){
+      const stack = document.getElementById('toastStack');
+      const t = document.createElement('div');
+      t.className = `toast ${kind||''}`;
+      t.innerHTML = `<i class="fa-solid fa-circle-check"></i> ${msg}`;
+      stack.appendChild(t);
+      setTimeout(() => { t.classList.add('leaving'); setTimeout(() => t.remove(), 250); }, 2600);
+    }
+
+    /* ---------------- INIT ---------------- */
+    renderPurchases('');
+    renderTimeline();
+  </script>
+
+</body>
+</html>

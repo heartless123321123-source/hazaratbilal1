@@ -1,0 +1,1440 @@
+<!DOCTYPE html>
+<html lang="ur" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Air Touch ERP - Installation</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <!-- xlsx-js-style: SheetJS-compatible (same global XLSX, same read/import API) but also
+       writes real cell styling (fills, fonts, borders) into the .xlsx file, which the plain
+       cdnjs 'xlsx' build cannot do — this is what makes the Export button's file look designed. -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+  <style>
+    :root {
+      --primary-blue: #0A3663;
+      --hover-blue: #0E4782;
+      --success-green: #208B3A;
+      --light-green: #2DC653;
+      --warning-orange: #D97706;
+      --danger-red: #DC2626;
+      --bg-gray: #F0F4F8;
+      --card-bg: #FFFFFF;
+      --text-dark: #1E293B;
+      --text-muted: #64748B;
+      --border-color: #CBD5E1;
+      --purple-accent: #7C3AED;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+    body { background-color: var(--bg-gray); color: var(--text-dark); display: flex; height: 100vh; overflow: hidden; }
+
+    .sidebar { width: 260px; background: var(--primary-blue); color: #ffffff; display: flex; flex-direction: column; box-shadow: 4px 0 12px rgba(0,0,0,0.15); z-index: 10; overflow-y: auto; }
+    .brand-header { padding: 16px 18px; background: rgba(0, 0, 0, 0.25); border-bottom: 4px solid var(--light-green); display: flex; align-items: center; gap: 10px; }
+    .brand-header i { font-size: 22px; color: var(--light-green); }
+    .brand-header h2 { font-size: 16px; font-weight: 800; letter-spacing: 0.5px; }
+
+    .nav-menu { padding: 12px 8px; display: flex; flex-direction: column; gap: 4px; }
+    .menu-group { display: flex; flex-direction: column; }
+    .menu-header { padding: 9px 12px; color: #FFFFFF; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: space-between; border-radius: 6px; cursor: pointer; transition: all 0.2s; }
+    .menu-header:hover { background: rgba(255, 255, 255, 0.1); }
+    .menu-header-title { display: flex; align-items: center; gap: 8px; }
+    .arrow-icon { font-size: 10px; transition: transform 0.2s; }
+
+    .tree-sub { display: none; flex-direction: column; padding-left: 20px; gap: 2px; margin-top: 2px; }
+    .menu-group.open .tree-sub { display: flex; }
+    .menu-group.open .arrow-icon { transform: rotate(90deg); }
+
+    .tree-item { padding: 6px 10px; color: #94A3B8; font-size: 11px; font-weight: 600; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+    .tree-item::before { content: '├─'; color: #475569; font-family: monospace; }
+    .tree-item:last-child::before { content: '└─'; }
+    .tree-item:hover, .tree-item.active { color: #FFFFFF; background: rgba(255, 255, 255, 0.12); }
+    .tree-item.active { color: var(--light-green); font-weight: 700; }
+
+    .main-wrapper { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+    .top-bar { background: var(--card-bg); padding: 10px 24px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; gap: 20px; }
+    .global-search { display: flex; align-items: center; background: #F1F5F9; border: 1px solid var(--border-color); border-radius: 6px; padding: 7px 14px; width: 420px; gap: 10px; }
+    .global-search input { border: none; background: transparent; outline: none; font-size: 12px; width: 100%; }
+
+    .top-right { display: flex; align-items: center; gap: 18px; }
+    .bell-icon { position: relative; cursor: pointer; font-size: 16px; color: var(--text-dark); }
+    .bell-badge { position: absolute; top: -6px; right: -8px; background: var(--danger-red); color: white; font-size: 9px; font-weight: 800; border-radius: 50%; padding: 2px 5px; }
+
+    .header-section { background: #FFFFFF; padding: 12px 24px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; }
+    .breadcrumbs { font-size: 11px; color: var(--text-muted); font-weight: 600; display: flex; align-items: center; gap: 6px; }
+    .breadcrumbs span.active { color: var(--primary-blue); font-weight: 700; }
+    .breadcrumbs span.link { cursor: pointer; }
+    .breadcrumbs span.link:hover { color: var(--primary-blue); text-decoration: underline; }
+
+    .action-toolbar { display: flex; gap: 8px; }
+    .btn { padding: 7px 12px; border-radius: 5px; font-size: 11px; font-weight: 700; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s; }
+    .btn:active { transform: scale(0.96); }
+    .btn-primary { background: var(--primary-blue); color: white; }
+    .btn-success { background: var(--success-green); color: white; }
+    .btn-purple { background: var(--purple-accent); color: white; }
+    .btn-outline { background: #F8FAFC; border: 1px solid var(--border-color); color: var(--text-dark); }
+    .btn-outline:hover { background: #E2E8F0; }
+    .btn-danger { background: var(--danger-red); color: white; }
+    .btn-danger:hover { background: #B91C1C; }
+
+    .content-body { flex: 1; padding: 16px 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
+
+    /* PAGE TABS (New Installation / Installation List / Returned Material) */
+    .page-tabs { display: flex; gap: 6px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 6px; }
+    .page-tab { flex: 1; text-align: center; padding: 9px 10px; border-radius: 6px; font-size: 11.5px; font-weight: 700; color: var(--text-muted); cursor: pointer; transition: all .15s ease; display: flex; align-items: center; justify-content: center; gap: 6px; }
+    .page-tab:hover { background: #F1F5F9; }
+    .page-tab.active { background: var(--primary-blue); color: white; }
+    .tab-section { display: none; flex-direction: column; gap: 16px; }
+    .tab-section.active { display: flex; }
+    .report-view { display: none; flex-direction: column; gap: 16px; }
+    .report-view.active { display: flex; }
+
+    .metrics-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+    .metric-card { background: var(--card-bg); border-radius: 6px; padding: 12px; border: 1px solid var(--border-color); display: flex; flex-direction: column; justify-content: space-between; gap: 4px; transition: transform .15s ease; }
+    .metric-card:hover { transform: translateY(-2px); }
+    .metric-card label { font-size: 9px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
+    .metric-card h3 { font-size: 16px; font-weight: 800; color: var(--primary-blue); }
+
+    .panel-card { background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border-color); display: flex; flex-direction: column; overflow: hidden; }
+    .panel-header { padding: 10px 14px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: #F8FAFC; }
+    .panel-header h3 { font-size: 12px; font-weight: 700; color: var(--primary-blue); display: flex; align-items: center; gap: 6px; }
+    .panel-body { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 11px; }
+    thead th { background: var(--primary-blue); color: white; text-align: left; padding: 8px 10px; font-weight: 600; }
+    tbody td { padding: 8px 10px; border-bottom: 1px solid var(--border-color); vertical-align: middle; }
+    tbody tr:hover { background-color: #F1F5F9; }
+    tbody tr.removing { animation: fadeOut .2s ease forwards; }
+    @keyframes fadeOut { to { opacity: 0; } }
+
+    .badge-success { background: #DCFCE7; color: var(--success-green); padding: 2px 6px; border-radius: 10px; font-weight: 700; }
+    .badge-warning { background: #FEF3C7; color: var(--warning-orange); padding: 2px 6px; border-radius: 10px; font-weight: 700; }
+    .badge-danger { background: #FEE2E2; color: var(--danger-red); padding: 2px 6px; border-radius: 10px; font-weight: 700; }
+    .badge-info { background: #DBEAFE; color: #1D4ED8; padding: 2px 6px; border-radius: 10px; font-weight: 700; }
+    .badge-purple { background: #EDE9FE; color: var(--purple-accent); padding: 2px 6px; border-radius: 10px; font-weight: 700; }
+
+    .row-actions { display: flex; gap: 4px; }
+    .btn-icon { width: 24px; height: 24px; border-radius: 4px; border: 1px solid var(--border-color); background: white; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 10px; color: var(--text-dark); transition: background .15s ease; }
+    .btn-icon:hover { background: #E2E8F0; }
+
+    .form-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+    .form-row label { font-size: 10px; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 3px; }
+    .form-row input, .form-row select, .panel-body input, .panel-body select, .panel-body textarea {
+      padding: 7px 9px; border: 1px solid var(--border-color); border-radius: 5px; font-size: 11.5px; width: 100%; font-family: inherit;
+    }
+
+    /* LINE ITEMS (used on-site: qty / free qty / unit price / auto extra) */
+    .lines-table { width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 4px; }
+    .lines-table th { background: #F1F5F9; color: var(--text-dark); text-align: left; padding: 6px 8px; font-weight: 700; border-bottom: 2px solid var(--border-color); }
+    .lines-table td { padding: 5px 6px; border-bottom: 1px solid #F1F5F9; }
+    .lines-table input, .lines-table select { width: 100%; padding: 5px 6px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 11px; }
+    .lines-table .stock-hint { font-size: 9px; color: var(--text-muted); white-space: nowrap; }
+    .lines-table .extra-charge-cell { font-weight: 800; color: var(--warning-orange); white-space: nowrap; }
+    .remove-line-btn { width: 22px; height: 22px; border-radius: 4px; border: 1px solid var(--border-color); background: #FEF2F2; color: var(--danger-red); cursor: pointer; font-size: 10px; }
+    .remove-line-btn:hover { background: #FEE2E2; }
+    .add-line-btn { align-self: flex-start; padding: 6px 10px; font-size: 10px; font-weight: 700; border-radius: 5px; border: 1px dashed var(--border-color); background: #F8FAFC; color: var(--primary-blue); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+    .add-line-btn:hover { background: #E2E8F0; }
+
+    .bill-summary { display: flex; justify-content: flex-end; gap: 24px; padding: 12px 4px; border-top: 2px solid var(--border-color); margin-top: 4px; flex-wrap: wrap; }
+    .bill-summary .item { text-align: right; }
+    .bill-summary .item .label { font-size: 10px; font-weight: 700; color: var(--text-muted); display: block; }
+    .bill-summary .item .value { font-size: 15px; font-weight: 800; color: var(--primary-blue); }
+    .bill-summary .item.grand .value { color: var(--success-green); font-size: 18px; }
+    .bill-summary .item.extra .value { color: var(--warning-orange); }
+
+    .form-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
+
+    /* MODAL (view installation / return material) */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(15,26,43,.55); display: none; align-items: center; justify-content: center; z-index: 500; }
+    .modal-overlay.show { display: flex; }
+    .modal-box { background: var(--card-bg); width: 380px; border-radius: 8px; padding: 18px; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 20px 50px rgba(0,0,0,.3); animation: modalPop .18s ease; max-height: 90vh; overflow-y: auto; }
+    .modal-box.wide { width: 700px; }
+    @keyframes modalPop { from { transform: scale(.94); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .modal-box h3 { color: var(--primary-blue); font-size: 13px; }
+    .modal-box label { font-size: 10px; font-weight: 700; color: var(--text-muted); }
+    .modal-box input, .modal-box select, .modal-box textarea { padding: 6px 8px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 11px; width: 100%; font-family: inherit; }
+    .modal-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
+    .view-lines-table td, .view-lines-table th { padding: 6px 8px; }
+
+    .toast-stack { position: fixed; bottom: 18px; right: 18px; display: flex; flex-direction: column; gap: 8px; z-index: 999; }
+    .toast { background: var(--primary-blue); color: white; padding: 10px 16px; border-radius: 6px; font-size: 11px; font-weight: 700; box-shadow: 0 8px 20px rgba(0,0,0,.25); display: flex; align-items: center; gap: 8px; animation: toastIn .25s ease; }
+    .toast.success { background: var(--success-green); }
+    .toast.danger { background: var(--danger-red); }
+    @keyframes toastIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .toast.leaving { animation: toastOut .25s ease forwards; }
+    @keyframes toastOut { to { opacity: 0; transform: translateX(20px); } }
+  </style>
+<style>
+  /* ---- Additions for ISP Installation Billing (EPON/GPON) ---- */
+  .free-badge { background:#DCFCE7; color:var(--success-green); font-weight:800; font-size:10px; padding:3px 7px; border-radius:10px; display:inline-flex; align-items:center; gap:4px; white-space:nowrap; }
+  .calc-note { font-size:9.5px; color:var(--text-muted); margin-top:2px; }
+  .grand-total-cell { color: var(--success-green); font-weight: 800; }
+  .extra-cell { color: var(--warning-orange); font-weight: 700; white-space: nowrap; }
+  table.data-table { width:100%; border-collapse:collapse; font-size:10.5px; }
+  table.data-table thead th { background: var(--primary-blue); color:#fff; padding:7px 8px; text-align:left; font-weight:700; white-space:nowrap; position: sticky; top:0; }
+  table.data-table tbody td { padding:7px 8px; border-bottom:1px solid var(--border-color); white-space:nowrap; }
+  table.data-table tbody tr:hover { background:#F1F5F9; }
+  table.data-table tfoot td { padding:9px 8px; background:#F8FAFC; border-top:2px solid var(--primary-blue); font-weight:800; color:var(--primary-blue); white-space:nowrap; }
+  .table-scroll { overflow-x:auto; }
+  .modem-pill-EPON { background:#DBEAFE; color:#1D4ED8; padding:2px 7px; border-radius:10px; font-weight:800; }
+  .modem-pill-GPON { background:#EDE9FE; color:var(--purple-accent); padding:2px 7px; border-radius:10px; font-weight:800; }
+  .modem-pill-XPON { background:#DCFCE7; color:var(--success-green); padding:2px 7px; border-radius:10px; font-weight:800; }
+  .modem-pill-5G-XPON { background:#FEF3C7; color:var(--warning-orange); padding:2px 7px; border-radius:10px; font-weight:800; }
+</style>
+  <script src="airtouch_store.js"></script>
+</head>
+<body>
+
+  <aside class="sidebar">
+    <div class="brand-header">
+      <i class="fa-solid fa-wifi"></i>
+      <h2>AIR TOUCH ERP</h2>
+    </div>
+
+    <nav class="nav-menu">
+      <div class="menu-group">
+        <div class="menu-header" onclick="location.href='dashboard.html'">
+          <div class="menu-header-title"><i class="fa-solid fa-house"></i> 🏠 Dashboard</div>
+        </div>
+      </div>
+
+      <div class="menu-group">
+        <div class="menu-header" onclick="toggleMenu(this)">
+          <div class="menu-header-title"><i class="fa-solid fa-boxes-stacked"></i> 📦 Inventory</div>
+          <i class="fa-solid fa-chevron-right arrow-icon"></i>
+        </div>
+        <div class="tree-sub">
+          <div class="tree-item" onclick="location.href='store_inventory.html'">Store Stock</div>
+          <div class="tree-item" onclick="location.href='purchase.html'">Purchase</div>
+          <div class="tree-item" onclick="location.href='dispatch.html'">Dispatch</div>
+          <div class="tree-item" onclick="location.href='ledger.html'">Ledger</div>
+        </div>
+      </div>
+
+      <div class="menu-group open">
+        <div class="menu-header" onclick="toggleMenu(this)">
+          <div class="menu-header-title"><i class="fa-solid fa-wrench"></i> 🔧 Installation</div>
+          <i class="fa-solid fa-chevron-right arrow-icon"></i>
+        </div>
+        <div class="tree-sub">
+          <div class="tree-item" data-page-tab="new" onclick="switchTab('new')">New Installation</div>
+          <div class="tree-item" data-page-tab="list" onclick="switchTab('list')">Installation List</div>
+          <div class="tree-item" data-page-tab="returns" onclick="switchTab('returns')">Returned Material</div>
+          <div class="tree-item" onclick="location.href='installation_exchange.html'">Installation Exchange</div>
+        </div>
+      </div>
+
+      <div class="menu-group">
+        <div class="menu-header" onclick="toggleMenu(this)">
+          <div class="menu-header-title"><i class="fa-solid fa-chart-pie"></i> 📊 Reports</div>
+          <i class="fa-solid fa-chevron-right arrow-icon"></i>
+        </div>
+        <div class="tree-sub">
+          <div class="tree-item" onclick="goToReport('daily')">Daily Summary</div>
+          <div class="tree-item" onclick="goToReport('monthly')">Monthly Report</div>
+          <div class="tree-item" onclick="goToReport('city')">City Wise Stock</div>
+        </div>
+      </div>
+
+      <div class="menu-group">
+        <div class="menu-header" onclick="location.href='employees.html'"><div class="menu-header-title"><i class="fa-solid fa-users"></i> 👨 Employees</div></div>
+      </div>
+
+      <div class="menu-group">
+        <div class="menu-header" onclick="location.href='settings.html'"><div class="menu-header-title"><i class="fa-solid fa-gear"></i> ⚙ Settings</div></div>
+      </div>
+    </nav>
+  </aside>
+
+  <main class="main-wrapper">
+
+    <header class="top-bar">
+      <div class="global-search">
+        <i class="fa-solid fa-magnifying-glass" style="color:var(--text-muted);"></i>
+        <input type="text" id="searchInput" placeholder="🔍 Search User ID / City...">
+      </div>
+
+      <div class="top-right">
+        <div class="bell-icon" title="Notifications" id="bellBtn">
+          <i class="fa-solid fa-bell"></i>
+          <span class="bell-badge" id="bellBadge">1</span>
+        </div>
+        <div style="font-size:11px; font-weight:700; color:var(--primary-blue);">
+          <i class="fa-solid fa-user-circle"></i> Admin Profile
+        </div>
+      </div>
+    </header>
+
+    <section class="header-section">
+      <div class="breadcrumbs">
+        <span class="link" onclick="location.href='dashboard.html'">Dashboard</span> &gt;
+        <span class="active">Installation</span>
+      </div>
+
+      <div class="action-toolbar">
+        <button class="btn btn-outline" id="importBtn"><i class="fa-solid fa-file-import"></i> 📥 Import Excel</button>
+        <input type="file" id="importFileInput" accept=".xlsx,.xls,.csv" style="display:none;">
+        <button class="btn btn-outline" id="exportBtn"><i class="fa-solid fa-file-export"></i> 📤 Export Excel</button>
+        <button class="btn btn-outline" id="printBtn"><i class="fa-solid fa-print"></i> 🖨 Print</button>
+        <button class="btn btn-outline" id="refreshBtn"><i class="fa-solid fa-rotate"></i> 🔄 Refresh</button>
+      </div>
+    </section>
+
+    <div class="content-body">
+
+      <div class="page-tabs">
+        <div class="page-tab active" data-page-tab="new" onclick="switchTab('new')"><i class="fa-solid fa-plug-circle-plus"></i> New Installation</div>
+        <div class="page-tab" data-page-tab="list" onclick="switchTab('list')"><i class="fa-solid fa-list-check"></i> Installation List</div>
+        <div class="page-tab" data-page-tab="returns" onclick="switchTab('returns')"><i class="fa-solid fa-rotate-left"></i> Returned Material</div>
+        <div class="page-tab" data-page-tab="reports" onclick="goToReport('daily')"><i class="fa-solid fa-chart-pie"></i> Reports</div>
+      </div>
+
+      <!-- ============ TAB 1: NEW INSTALLATION ============ -->
+      <section class="tab-section active" id="tab-new">
+        <section class="panel-card">
+          <div class="panel-header">
+            <h3><i class="fa-solid fa-plug-circle-plus"></i> New Customer Installation</h3>
+            <span style="font-size:10px; color:var(--text-muted);">EPON &nbsp;|&nbsp; GPON &nbsp;|&nbsp; XPON &nbsp;|&nbsp; 5G-XPON &nbsp;|&nbsp; 1 Modem + 50m Wire + 2 Patch Cords Free</span>
+          </div>
+          <div class="panel-body">
+
+            <div class="form-row">
+              <div>
+                <label>User ID</label>
+                <input type="text" id="nUserId" placeholder="e.g. dhr824">
+              </div>
+              <div>
+                <label>City</label>
+                <input type="text" id="nCity" list="cityList" placeholder="e.g. TLS / BTK">
+                <datalist id="cityList">
+                  <option value="TLS"><option value="BTK"><option value="ALD"><option value="THA">
+                </datalist>
+              </div>
+              <div>
+                <label>Install Date</label>
+                <input type="date" id="nDate">
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div>
+                <label>Modem Type</label>
+                <select id="nModemType">
+                  <option value="EPON">EPON</option>
+                  <option value="GPON">GPON</option>
+                  <option value="XPON">XPON</option>
+                  <option value="5G-XPON">5G-XPON</option>
+                </select>
+              </div>
+              <div>
+                <label>Installation Charge (Rs)</label>
+                <input type="number" id="nInstallCharge" min="0" value="8000">
+                <div class="calc-note">Auto-filled by modem type — you can override</div>
+              </div>
+              <div>
+                <label>Free Items Included</label>
+                <div style="display:flex; gap:6px; margin-top:6px; flex-wrap:wrap;">
+                  <span class="free-badge"><i class="fa-solid fa-check"></i> 1 Modem</span>
+                  <span class="free-badge"><i class="fa-solid fa-check"></i> 50m Wire</span>
+                  <span class="free-badge"><i class="fa-solid fa-check"></i> 2 Patch Cords</span>
+                </div>
+              </div>
+            </div>
+
+            <label style="margin-top:4px;">Extra Wire (if used beyond 50m free)</label>
+            <div class="form-row">
+              <div>
+                <label>Extra Wire Rate (Rs/m)</label>
+                <input type="number" id="nWireRate" min="0" value="0" step="0.01">
+              </div>
+              <div>
+                <label>Extra Wire Meters</label>
+                <input type="number" id="nWireMeters" min="0" value="0">
+              </div>
+              <div>
+                <label>Extra Wire Total (Rs)</label>
+                <input type="number" id="nWireTotalDisplay" value="0" readonly style="background:#F1F5F9; font-weight:700;">
+              </div>
+            </div>
+
+            <label style="margin-top:4px;">Other Extras (if additional units used)</label>
+            <div class="form-row">
+              <div>
+                <label>Extra Modem (Rs)</label>
+                <input type="number" id="nExtraModem" min="0" value="0">
+              </div>
+              <div>
+                <label>Extra Patch Cord (Rs)</label>
+                <input type="number" id="nExtraPatchCord" min="0" value="0">
+              </div>
+              <div>
+                <label>Other Item Name</label>
+                <input type="text" id="nOtherItemName" placeholder="e.g. Router, Splitter, TV Box">
+              </div>
+            </div>
+            <div class="form-row">
+              <div>
+                <label>Other Item Amount (Rs)</label>
+                <input type="number" id="nOtherItemAmount" min="0" value="0">
+              </div>
+              <div>
+                <label>Remarks</label>
+                <input type="text" id="nRemarks" placeholder="e.g. Long wire run to roof">
+              </div>
+            </div>
+
+            <div class="bill-summary">
+              <div class="item"><span class="label">Installation Charge</span><span class="value" id="nFeeDisplay">Rs 0</span></div>
+              <div class="item extra"><span class="label">Extra Billed (Wire+Modem+Cord)</span><span class="value" id="nExtraDisplay">Rs 0</span></div>
+              <div class="item grand"><span class="label">Grand Total (Customer Pays)</span><span class="value" id="nGrandDisplay">Rs 0</span></div>
+            </div>
+
+            <div class="form-actions">
+              <button class="btn btn-outline" id="nResetBtn">Reset Form</button>
+              <button class="btn btn-purple" id="nSaveBtn"><i class="fa-solid fa-check"></i> Save Installation</button>
+            </div>
+
+          </div>
+        </section>
+      </section>
+
+      <!-- ============ TAB 2: INSTALLATION LIST ============ -->
+      <section class="tab-section" id="tab-list">
+        <section class="metrics-grid" id="listMetrics">
+          <div class="metric-card"><label>🔌 Total Installations</label><h3 id="mTotalInst">0</h3></div>
+          <div class="metric-card"><label>💰 Installation Charges</label><h3 id="mTotalFee">0</h3></div>
+          <div class="metric-card"><label>➕ Extra Billed (Wire+Modem+Cord)</label><h3 style="color:var(--warning-orange);" id="mTotalExtra">0</h3></div>
+          <div class="metric-card"><label>🧾 Grand Total Billed</label><h3 style="color:var(--success-green);" id="mGrandTotal">0</h3></div>
+          <div class="metric-card"><label>📅 This Month</label><h3 id="mMonthCount">0</h3></div>
+        </section>
+
+        <section class="panel-card">
+          <div class="panel-header">
+            <h3><i class="fa-solid fa-list-check"></i> Installation Record</h3>
+            <span style="font-size:10px; color:var(--text-muted);">Matches your Excel INSTALLATION RECORD sheet — totals auto-calculated at the bottom</span>
+          </div>
+          <div class="panel-body" style="padding:0;">
+            <div class="table-scroll">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>User ID</th>
+                    <th>City</th>
+                    <th>Modem Type</th>
+                    <th>Installation Charge (Rs)</th>
+                    <th>Modem (Free)</th>
+                    <th>Wire 50m (Free)</th>
+                    <th>Patch Cord x2 (Free)</th>
+                    <th>Extra Wire (Rs/m)</th>
+                    <th>Extra Wire Meters</th>
+                    <th>Extra Wire Total (Rs)</th>
+                    <th>Extra Modem (Rs)</th>
+                    <th>Extra Patch Cord (Rs)</th>
+                    <th>Other Item</th>
+                    <th>Other Item Amount (Rs)</th>
+                    <th>Grand Total (Rs)</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="installBody"></tbody>
+                <tfoot>
+                  <tr>
+                    <td colspan="4" style="text-align:right;">TOTAL</td>
+                    <td id="fInstallCharge">0</td>
+                    <td></td><td></td><td></td>
+                    <td></td>
+                    <td></td>
+                    <td id="fWireTotal">0</td>
+                    <td id="fExtraModem">0</td>
+                    <td id="fExtraPatchCord">0</td>
+                    <td></td>
+                    <td id="fOtherAmount">0</td>
+                    <td id="fGrandTotal">0</td>
+                    <td></td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <!-- ============ TAB 3: RETURNED MATERIAL ============ -->
+      <section class="tab-section" id="tab-returns">
+        <section class="panel-card">
+          <div class="panel-header">
+            <h3><i class="fa-solid fa-rotate-left"></i> Return Material From an Installation</h3>
+            <span style="font-size:10px; color:var(--text-muted);">e.g. disconnect, faulty swap, or leftover wire brought back</span>
+          </div>
+          <div class="panel-body">
+            <div class="form-row">
+              <div>
+                <label>Installation</label>
+                <select id="rInstallation"></select>
+              </div>
+              <div>
+                <label>Item</label>
+                <select id="rItem">
+                  <option value="modem">Modem</option>
+                  <option value="wire">Fiber Wire (per meter)</option>
+                  <option value="patchcord">Patch Cord</option>
+                </select>
+              </div>
+              <div>
+                <label>Qty to Return</label>
+                <input type="number" id="rQty" min="1" value="1">
+              </div>
+            </div>
+            <div class="form-row">
+              <div style="grid-column: span 3;">
+                <label>Reason</label>
+                <input type="text" id="rReason" placeholder="e.g. Disconnected / Faulty modem swapped / Leftover wire">
+              </div>
+            </div>
+            <div class="form-actions">
+              <button class="btn btn-purple" id="rSaveBtn"><i class="fa-solid fa-rotate-left"></i> Return to Stock</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel-card">
+          <div class="panel-header">
+            <h3><i class="fa-solid fa-box-open"></i> Returned Material History</h3>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Return #</th>
+                <th>User ID</th>
+                <th>Item</th>
+                <th>Qty Returned</th>
+                <th>Reason</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody id="returnsBody"></tbody>
+          </table>
+        </section>
+      </section>
+
+      <!-- ============ TAB 4: REPORTS ============ -->
+      <section class="tab-section" id="tab-reports">
+        <div class="page-tabs" style="max-width:520px;">
+          <div class="page-tab report-subtab active" data-report-view="daily" onclick="showReportView('daily')"><i class="fa-solid fa-calendar-day"></i> Daily Summary</div>
+          <div class="page-tab report-subtab" data-report-view="monthly" onclick="showReportView('monthly')"><i class="fa-solid fa-calendar-days"></i> Monthly Report</div>
+          <div class="page-tab report-subtab" data-report-view="city" onclick="showReportView('city')"><i class="fa-solid fa-city"></i> City Wise Stock</div>
+        </div>
+
+        <!-- DAILY SUMMARY -->
+        <div class="report-view active" id="report-daily">
+          <section class="panel-card">
+            <div class="panel-header">
+              <h3><i class="fa-solid fa-calendar-day"></i> Daily Summary</h3>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <input type="date" id="dailyDate" style="width:150px;">
+              </div>
+            </div>
+            <div class="panel-body">
+              <section class="metrics-grid" style="grid-template-columns: repeat(4, 1fr);">
+                <div class="metric-card"><label>🔌 Installations</label><h3 id="dCount">0</h3></div>
+                <div class="metric-card"><label>💰 Installation Charges</label><h3 id="dFee">0</h3></div>
+                <div class="metric-card"><label>➕ Extra Billed</label><h3 style="color:var(--warning-orange);" id="dExtra">0</h3></div>
+                <div class="metric-card"><label>🧾 Grand Total</label><h3 style="color:var(--success-green);" id="dGrand">0</h3></div>
+              </section>
+              <div class="table-scroll">
+                <table class="data-table">
+                  <thead>
+                    <tr><th>User ID</th><th>City</th><th>Modem Type</th><th>Installation Charge (Rs)</th><th>Extra (Rs)</th><th>Grand Total (Rs)</th></tr>
+                  </thead>
+                  <tbody id="dailyBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <!-- MONTHLY REPORT -->
+        <div class="report-view" id="report-monthly">
+          <section class="panel-card">
+            <div class="panel-header">
+              <h3><i class="fa-solid fa-calendar-days"></i> Monthly Report</h3>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <input type="month" id="monthlyMonth" style="width:150px;">
+              </div>
+            </div>
+            <div class="panel-body">
+              <section class="metrics-grid" style="grid-template-columns: repeat(4, 1fr);">
+                <div class="metric-card"><label>🔌 Installations</label><h3 id="mCount">0</h3></div>
+                <div class="metric-card"><label>💰 Installation Charges</label><h3 id="mFee">0</h3></div>
+                <div class="metric-card"><label>➕ Extra Billed</label><h3 style="color:var(--warning-orange);" id="mExtra">0</h3></div>
+                <div class="metric-card"><label>🧾 Grand Total</label><h3 style="color:var(--success-green);" id="mGrand">0</h3></div>
+              </section>
+              <div class="table-scroll">
+                <table class="data-table">
+                  <thead>
+                    <tr><th>Date</th><th>Installations</th><th>Installation Charges (Rs)</th><th>Extra Billed (Rs)</th><th>Grand Total (Rs)</th></tr>
+                  </thead>
+                  <tbody id="monthlyBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <!-- CITY WISE STOCK -->
+        <div class="report-view" id="report-city">
+          <section class="panel-card">
+            <div class="panel-header">
+              <h3><i class="fa-solid fa-warehouse"></i> Current Stock (All Cities)</h3>
+            </div>
+            <div class="panel-body">
+              <section class="metrics-grid" style="grid-template-columns: repeat(3, 1fr);">
+                <div class="metric-card"><label>📡 Modem Stock Left</label><h3 id="stockModem">0</h3></div>
+                <div class="metric-card"><label>🧵 Wire Stock Left (m)</label><h3 id="stockWire">0</h3></div>
+                <div class="metric-card"><label>🔌 Patch Cord Stock Left</label><h3 id="stockPatch">0</h3></div>
+              </section>
+            </div>
+          </section>
+
+          <section class="panel-card">
+            <div class="panel-header">
+              <h3><i class="fa-solid fa-city"></i> City Wise Installation &amp; Material Usage</h3>
+              <span style="font-size:10px; color:var(--text-muted);">Material used on-site + revenue, grouped by city</span>
+            </div>
+            <div class="panel-body" style="padding:0;">
+              <div class="table-scroll">
+                <table class="data-table">
+                  <thead>
+                    <tr><th>City</th><th>Installations</th><th>Modems Used</th><th>Wire Used (m)</th><th>Patch Cords Used</th><th>Grand Total Billed (Rs)</th></tr>
+                  </thead>
+                  <tbody id="cityBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- VIEW INSTALLATION MODAL -->
+  <div class="modal-overlay" id="viewOverlay">
+    <div class="modal-box">
+      <h3><i class="fa-solid fa-eye"></i> Installation Detail — <span id="viewRef"></span></h3>
+      <div class="modal-row">
+        <div><label>User ID</label><div id="viewUserId" style="font-size:12px; font-weight:700; margin-top:4px;"></div></div>
+        <div><label>City</label><div id="viewCity" style="font-size:12px; font-weight:700; margin-top:4px;"></div></div>
+        <div><label>Date</label><div id="viewDate" style="font-size:12px; font-weight:700; margin-top:4px;"></div></div>
+      </div>
+      <label>Remarks</label>
+      <div id="viewRemarks" style="font-size:12px; margin-top:2px;"></div>
+
+      <table class="lines-table view-lines-table">
+        <tbody id="viewLinesBody"></tbody>
+      </table>
+
+      <div class="bill-summary">
+        <div class="item"><span class="label">Installation Charge</span><span class="value" id="viewFee">Rs 0</span></div>
+        <div class="item extra"><span class="label">Extra Billed</span><span class="value" id="viewExtra">Rs 0</span></div>
+        <div class="item grand"><span class="label">Grand Total</span><span class="value" id="viewGrand">Rs 0</span></div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn btn-outline" id="viewCloseBtn">Close</button>
+        <button class="btn btn-purple" id="viewPrintBtn"><i class="fa-solid fa-print"></i> Print</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-stack" id="toastStack"></div>
+
+  <script>
+    function toggleMenu(element) {
+      element.parentElement.classList.toggle('open');
+    }
+
+    /* ---------------- PAGE TABS ---------------- */
+    function switchTab(tab){
+      document.querySelectorAll('.page-tab[data-page-tab]').forEach(t => t.classList.toggle('active', t.dataset.pageTab === tab));
+      document.querySelectorAll('.tree-item[data-page-tab]').forEach(t => t.classList.toggle('active', t.dataset.pageTab === tab));
+      document.querySelectorAll('.tab-section').forEach(s => s.classList.remove('active'));
+      document.getElementById('tab-' + tab).classList.add('active');
+      if (tab === 'list') { renderInstallations(); }
+      if (tab === 'returns') { populateReturnForm(); renderReturns(); }
+      if (tab === 'reports') { renderAllReports(); }
+    }
+
+    /* ---------------- REPORTS ---------------- */
+    function goToReport(view){
+      switchTab('reports');
+      showReportView(view);
+    }
+
+    function showReportView(view){
+      document.querySelectorAll('.report-subtab').forEach(t => t.classList.toggle('active', t.dataset.reportView === view));
+      document.querySelectorAll('.report-view').forEach(v => v.classList.toggle('active', v.id === 'report-' + view));
+      if (view === 'daily') renderDailyReport();
+      if (view === 'monthly') renderMonthlyReport();
+      if (view === 'city') renderCityReport();
+    }
+
+    function renderAllReports(){
+      const activeView = document.querySelector('.report-subtab.active');
+      showReportView(activeView ? activeView.dataset.reportView : 'daily');
+    }
+
+    function renderDailyReport(){
+      const dateInput = document.getElementById('dailyDate');
+      if (!dateInput.value) dateInput.value = latestInstallDate();
+      const dateStr = dateInput.value;
+      const rows = installations.filter(i => toISODate(i.date) === dateStr);
+
+      let sumFee = 0, sumExtra = 0, sumGrand = 0;
+      const body = document.getElementById('dailyBody');
+      body.innerHTML = rows.map(i => {
+        const t = installTotals(i);
+        sumFee += t.fee; sumExtra += t.extra; sumGrand += t.grand;
+        return `<tr>
+          <td><strong>${i.user_id}</strong></td>
+          <td>${i.city || '—'}</td>
+          <td><span class="modem-pill-${i.modem_type}">${i.modem_type}</span></td>
+          <td>${money(t.fee)}</td>
+          <td class="extra-cell">${money(t.extra)}</td>
+          <td class="grand-total-cell">${money(t.grand)}</td>
+        </tr>`;
+      }).join('') || `<tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:16px;">No installations on this date</td></tr>`;
+
+      document.getElementById('dCount').textContent = rows.length;
+      document.getElementById('dFee').textContent = money(sumFee);
+      document.getElementById('dExtra').textContent = money(sumExtra);
+      document.getElementById('dGrand').textContent = money(sumGrand);
+    }
+    document.getElementById('dailyDate').addEventListener('change', renderDailyReport);
+
+    function renderMonthlyReport(){
+      const monthInput = document.getElementById('monthlyMonth');
+      if (!monthInput.value) monthInput.value = latestInstallDate().slice(0,7);
+      const monthStr = monthInput.value; // YYYY-MM
+
+      const rows = installations.filter(i => toISODate(i.date).slice(0,7) === monthStr);
+
+      let sumFee = 0, sumExtra = 0, sumGrand = 0;
+      const byDay = {};
+      rows.forEach(i => {
+        const t = installTotals(i);
+        sumFee += t.fee; sumExtra += t.extra; sumGrand += t.grand;
+        const d = toISODate(i.date);
+        if (!byDay[d]) byDay[d] = { count: 0, fee: 0, extra: 0, grand: 0 };
+        byDay[d].count += 1; byDay[d].fee += t.fee; byDay[d].extra += t.extra; byDay[d].grand += t.grand;
+      });
+
+      const days = Object.keys(byDay).sort((a,b) => b.localeCompare(a));
+      const body = document.getElementById('monthlyBody');
+      body.innerHTML = days.map(d => `<tr>
+        <td>${d}</td>
+        <td>${byDay[d].count}</td>
+        <td>${money(byDay[d].fee)}</td>
+        <td class="extra-cell">${money(byDay[d].extra)}</td>
+        <td class="grand-total-cell">${money(byDay[d].grand)}</td>
+      </tr>`).join('') || `<tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:16px;">No installations this month</td></tr>`;
+
+      document.getElementById('mCount').textContent = rows.length;
+      document.getElementById('mFee').textContent = money(sumFee);
+      document.getElementById('mExtra').textContent = money(sumExtra);
+      document.getElementById('mGrand').textContent = money(sumGrand);
+    }
+    document.getElementById('monthlyMonth').addEventListener('change', renderMonthlyReport);
+
+    function renderCityReport(){
+      document.getElementById('stockModem').textContent = stockItems.modem.stock;
+      document.getElementById('stockWire').textContent = stockItems.wire.stock;
+      document.getElementById('stockPatch').textContent = stockItems.patchcord.stock;
+
+      const byCity = {};
+      installations.forEach(i => {
+        const city = i.city || '—';
+        if (!byCity[city]) byCity[city] = { count: 0, modems: 0, wire: 0, patchCords: 0, grand: 0 };
+        const t = installTotals(i);
+        byCity[city].count += 1;
+        byCity[city].modems += 1 + (i.extra_modem > 0 ? 1 : 0);
+        byCity[city].wire += 50 + (i.wire_meters || 0);
+        byCity[city].patchCords += 2 + (i.extra_patch_cord > 0 ? 1 : 0);
+        byCity[city].grand += t.grand;
+      });
+
+      const cities = Object.keys(byCity).sort();
+      const body = document.getElementById('cityBody');
+      body.innerHTML = cities.map(city => `<tr>
+        <td><strong>${city}</strong></td>
+        <td>${byCity[city].count}</td>
+        <td>${byCity[city].modems}</td>
+        <td>${byCity[city].wire}</td>
+        <td>${byCity[city].patchCords}</td>
+        <td class="grand-total-cell">${money(byCity[city].grand)}</td>
+      </tr>`).join('') || `<tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:16px;">No installations recorded yet</td></tr>`;
+    }
+
+    /* ---------------- RATE CARD ---------------- */
+    const MODEM_RATE = { EPON: 8000, GPON: 9000, XPON: 10000, '5G-XPON': 12000 };
+
+    /* ---------------- STOCK (mirrors store inventory) ---------------- */
+    let stockItems = {
+      modem: { name: 'Modem (EPON/GPON/XPON/5G-XPON)', stock: 500 },
+      wire: { name: 'Fiber Wire (per meter)', stock: 50000 },
+      patchcord: { name: 'Patch Cord', stock: 1000 },
+    };
+
+    /* ---------------- MOCK INSTALLATIONS — seeded from your Excel sheet ---------------- */
+    // grand total = installation_charge + extra_wire_total + extra_modem + extra_patch_cord
+    let installSeq = 0;
+    function mkInstall(user_id, city, modem_type, installation_charge, wire_rate, wire_meters, extra_modem, extra_patch_cord, date, other_item_name, other_item_amount){
+      const wire_total = Math.round(wire_rate * wire_meters * 100) / 100;
+      return {
+        id: ++installSeq, user_id, city, modem_type,
+        installation_charge, wire_rate, wire_meters, wire_total,
+        extra_modem, extra_patch_cord,
+        other_item_name: other_item_name || '', other_item_amount: other_item_amount || 0,
+        remarks: '', date: date || '2026-07-20'
+      };
+    }
+    let installations = [
+      mkInstall('dhr824', 'TLS', 'EPON', 8000, 0,    0, 0, 0),
+      mkInstall('dhr825', 'TLS', 'EPON', 8000, 1400, 1, 0, 0),
+      mkInstall('dhr826', 'TLS', 'GPON', 8000, 1500, 1, 0, 0),
+      mkInstall('dhr827', 'TLS', 'EPON', 8000, 1400, 1, 0, 0),
+      mkInstall('dhr828', 'TLS', 'EPON', 8000, 0,    0, 0, 0),
+      mkInstall('dhr829', 'BTK', 'EPON', 8000, 2500, 1, 0, 0),
+      mkInstall('dhr830', 'BTK', 'GPON', 8000, 200,  1, 0, 0),
+      mkInstall('dhr831', 'BTK', 'EPON', 8000, 0,    0, 0, 0),
+      mkInstall('dhr832', 'BTK', 'EPON', 8000, 3700, 1, 0, 0),
+      mkInstall('Tok272', 'BTK', 'GPON', 8000, 3000, 1, 0, 0),
+      mkInstall('Mbd294', 'BTK', 'EPON', 5000, 1700, 1, 0, 0),
+      mkInstall('Mbd295', 'BTK', 'EPON', 5000, 1900, 1, 0, 0),
+      mkInstall('Mbd296', 'BTK', 'EPON', 5000, 1200, 1, 0, 0),
+    ];
+
+    /* ---------------- MOCK RETURNS ---------------- */
+    let returnSeq = 0;
+    let returns = [];
+
+    /* ---------------- RESTORE FROM localStorage (fixes data resetting on refresh) ---------------- */
+    // installations_data was already being WRITTEN on every save (see
+    // saveInstallationsToStorage below) but was never READ back on page load,
+    // so a refresh silently reverted to the seed data above even though the
+    // saved data was still sitting in localStorage. Same gap existed for
+    // stock levels and returned-material history — they were never persisted
+    // at all. Restoring all three here fixes it.
+    (function restoreInstallationData(){
+      try {
+        const savedInstallations = localStorage.getItem('installations_data');
+        if (savedInstallations) {
+          const parsed = JSON.parse(savedInstallations);
+          if (Array.isArray(parsed)) {
+            installations = parsed;
+            installSeq = installations.reduce((max, i) => Math.max(max, i.id || 0), 0);
+          }
+        }
+      } catch (e) { /* ignore corrupted storage, keep sample data */ }
+      try {
+        const savedStock = localStorage.getItem('installation_stock_data');
+        if (savedStock) {
+          const parsed = JSON.parse(savedStock);
+          if (parsed && typeof parsed === 'object') stockItems = parsed;
+        }
+      } catch (e) { /* ignore corrupted storage */ }
+      try {
+        const savedReturns = localStorage.getItem('installation_returns_data');
+        if (savedReturns) {
+          const parsed = JSON.parse(savedReturns);
+          if (Array.isArray(parsed)) {
+            returns = parsed;
+            returnSeq = returns.reduce((max, r) => Math.max(max, r.id || 0), 0);
+          }
+        }
+      } catch (e) { /* ignore corrupted storage */ }
+    })();
+    function saveStockToStorage(){
+      try { localStorage.setItem('installation_stock_data', JSON.stringify(stockItems)); } catch (e) {}
+    }
+    function saveReturnsToStorage(){
+      try { localStorage.setItem('installation_returns_data', JSON.stringify(returns)); } catch (e) {}
+    }
+
+    function toISODate(value){
+      if (!value) return new Date().toISOString().slice(0,10);
+      if (value instanceof Date && !isNaN(value)) return value.toISOString().slice(0,10);
+      const parsed = new Date(value);
+      return isNaN(parsed) ? new Date().toISOString().slice(0,10) : parsed.toISOString().slice(0,10);
+    }
+    function installRef(id){ return `INST-${id}`; }
+
+    // Reports should open on a date that actually has data instead of
+    // blindly defaulting to "today" (which shows an empty report whenever
+    // there's no installation recorded today). Falls back to today only
+    // if there are no installations at all yet.
+    function latestInstallDate(){
+      if (!installations.length) return toISODate(new Date());
+      return installations.reduce((latest, i) => {
+        const d = toISODate(i.date);
+        return d > latest ? d : latest;
+      }, toISODate(installations[0].date));
+    }
+
+    // === CORE BILLING FORMULA — matches the Excel sheet exactly ===
+    function installTotals(inst){
+      const wireTotal = Math.round((inst.wire_rate || 0) * (inst.wire_meters || 0) * 100) / 100;
+      const extra = wireTotal + (inst.extra_modem || 0) + (inst.extra_patch_cord || 0) + (inst.other_item_amount || 0);
+      const grand = (inst.installation_charge || 0) + extra;
+      return { fee: inst.installation_charge || 0, wireTotal, extra, grand };
+    }
+    function money(n){ return (Math.round((n||0)*100)/100).toLocaleString('en-US', {maximumFractionDigits: 2}); }
+
+    /* ---------------- SHARED DATA (localStorage) — lets Installation Exchange page read this data ---------------- */
+    function saveInstallationsToStorage(){
+      try { localStorage.setItem('installations_data', JSON.stringify(installations)); } catch(e){}
+    }
+    function loadExchangeRecords(){
+      try { return JSON.parse(localStorage.getItem('exchangeRecords') || '[]'); } catch(e){ return []; }
+    }
+    function saveExchangeRecords(records){
+      try { localStorage.setItem('exchangeRecords', JSON.stringify(records)); } catch(e){}
+    }
+    function addExchangeRecord(inst, item_name, amount){
+      if (!item_name || !amount) return;
+      const records = loadExchangeRecords();
+      const nextId = records.length ? Math.max(...records.map(r => r.id)) + 1 : 1;
+      records.push({ id: nextId, installId: inst.id, user_id: inst.user_id, city: inst.city, item_name, amount, date: inst.date, remarks: inst.remarks || '' });
+      saveExchangeRecords(records);
+    }
+
+    /* =========================================================
+       TAB 1: NEW INSTALLATION
+       ========================================================= */
+    function updateBillSummary(){
+      const fee = Number(document.getElementById('nInstallCharge').value) || 0;
+      const wireRate = Number(document.getElementById('nWireRate').value) || 0;
+      const wireMeters = Number(document.getElementById('nWireMeters').value) || 0;
+      const extraModem = Number(document.getElementById('nExtraModem').value) || 0;
+      const extraPatchCord = Number(document.getElementById('nExtraPatchCord').value) || 0;
+      const otherAmount = Number(document.getElementById('nOtherItemAmount').value) || 0;
+
+      const wireTotal = Math.round(wireRate * wireMeters * 100) / 100;
+      document.getElementById('nWireTotalDisplay').value = wireTotal;
+
+      const extra = wireTotal + extraModem + extraPatchCord + otherAmount;
+      const grand = fee + extra;
+
+      document.getElementById('nFeeDisplay').textContent = 'Rs ' + money(fee);
+      document.getElementById('nExtraDisplay').textContent = 'Rs ' + money(extra);
+      document.getElementById('nGrandDisplay').textContent = 'Rs ' + money(grand);
+    }
+
+    function resetNewInstallForm(){
+      document.getElementById('nUserId').value = '';
+      document.getElementById('nCity').value = '';
+      document.getElementById('nDate').value = toISODate(new Date());
+      document.getElementById('nModemType').value = 'EPON';
+      document.getElementById('nInstallCharge').value = MODEM_RATE.EPON;
+      document.getElementById('nWireRate').value = 0;
+      document.getElementById('nWireMeters').value = 0;
+      document.getElementById('nExtraModem').value = 0;
+      document.getElementById('nExtraPatchCord').value = 0;
+      document.getElementById('nOtherItemName').value = '';
+      document.getElementById('nOtherItemAmount').value = 0;
+      document.getElementById('nRemarks').value = '';
+      updateBillSummary();
+    }
+
+    document.getElementById('nModemType').addEventListener('change', (e) => {
+      document.getElementById('nInstallCharge').value = MODEM_RATE[e.target.value];
+      updateBillSummary();
+    });
+    ['nInstallCharge','nWireRate','nWireMeters','nExtraModem','nExtraPatchCord','nOtherItemAmount'].forEach(id => {
+      document.getElementById(id).addEventListener('input', updateBillSummary);
+    });
+    document.getElementById('nResetBtn').onclick = resetNewInstallForm;
+
+    document.getElementById('nSaveBtn').onclick = () => {
+      const user_id = document.getElementById('nUserId').value.trim();
+      const city = document.getElementById('nCity').value.trim();
+      const date = document.getElementById('nDate').value || toISODate(new Date());
+      const modem_type = document.getElementById('nModemType').value;
+      const installation_charge = Number(document.getElementById('nInstallCharge').value) || 0;
+      const wire_rate = Number(document.getElementById('nWireRate').value) || 0;
+      const wire_meters = Number(document.getElementById('nWireMeters').value) || 0;
+      const extra_modem = Number(document.getElementById('nExtraModem').value) || 0;
+      const extra_patch_cord = Number(document.getElementById('nExtraPatchCord').value) || 0;
+      const other_item_name = document.getElementById('nOtherItemName').value.trim();
+      const other_item_amount = Number(document.getElementById('nOtherItemAmount').value) || 0;
+      const remarks = document.getElementById('nRemarks').value.trim();
+
+      if (!user_id){ showToast('User ID is required', 'danger'); return; }
+      if (wire_meters > 0 && wire_rate <= 0){ showToast('Enter the extra wire rate (Rs/m) since extra meters were used', 'danger'); return; }
+      if (other_item_amount > 0 && !other_item_name){ showToast('Enter the item name for the other extra charged', 'danger'); return; }
+
+      const wire_total = Math.round(wire_rate * wire_meters * 100) / 100;
+      const inst = { id: ++installSeq, user_id, city, modem_type, installation_charge, wire_rate, wire_meters, wire_total, extra_modem, extra_patch_cord, other_item_name, other_item_amount, remarks, date };
+      installations.push(inst);
+      saveInstallationsToStorage();
+      if (other_item_amount > 0) addExchangeRecord(inst, other_item_name, other_item_amount);
+
+      // deduct stock: 1 modem + 50m wire + 2 patch cords free allowance, plus any extras used
+      stockItems.modem.stock -= 1 + (extra_modem > 0 ? 1 : 0);
+      stockItems.wire.stock -= 50 + wire_meters;
+      stockItems.patchcord.stock -= 2 + (extra_patch_cord > 0 ? 1 : 0);
+      saveStockToStorage();
+
+      const totals = installTotals(inst);
+      resetNewInstallForm();
+      showToast(`${installRef(inst.id)} saved — ${user_id} billed Rs ${money(totals.grand)}`, 'success');
+      switchTab('list');
+    };
+
+    /* =========================================================
+       TAB 2: INSTALLATION LIST
+       ========================================================= */
+    function renderInstallations(filter){
+      const body = document.getElementById('installBody');
+      const q = (filter || document.getElementById('searchInput').value || '').toLowerCase();
+
+      const rows = installations
+        .filter(i => {
+          if (!q) return true;
+          return i.user_id.toLowerCase().includes(q) || (i.city || '').toLowerCase().includes(q);
+        })
+        .sort((a,b) => b.id - a.id);
+
+      body.innerHTML = rows.map(i => {
+        const t = installTotals(i);
+        return `<tr data-id="${i.id}">
+          <td>${toISODate(i.date)}</td>
+          <td><strong>${i.user_id}</strong></td>
+          <td>${i.city || '—'}</td>
+          <td><span class="modem-pill-${i.modem_type}">${i.modem_type}</span></td>
+          <td>${money(i.installation_charge)}</td>
+          <td><span class="free-badge"><i class="fa-solid fa-check"></i> FREE</span></td>
+          <td><span class="free-badge"><i class="fa-solid fa-check"></i> FREE</span></td>
+          <td><span class="free-badge"><i class="fa-solid fa-check"></i> FREE</span></td>
+          <td>${i.wire_rate ? money(i.wire_rate) : '—'}</td>
+          <td>${i.wire_meters || 0}</td>
+          <td class="extra-cell">${money(t.wireTotal)}</td>
+          <td class="extra-cell">${money(i.extra_modem)}</td>
+          <td class="extra-cell">${money(i.extra_patch_cord)}</td>
+          <td>${i.other_item_name || '—'}</td>
+          <td class="extra-cell">${i.other_item_amount ? money(i.other_item_amount) : '—'}</td>
+          <td class="grand-total-cell">${money(t.grand)}</td>
+          <td>
+            <div class="row-actions">
+              <button class="btn-icon" title="View Installation" data-action="view"><i class="fa-solid fa-eye"></i></button>
+            </div>
+          </td>
+        </tr>`;
+      }).join('') || `<tr><td colspan="17" style="text-align:center; color:var(--text-muted); padding:16px;">No installations match your search</td></tr>`;
+
+      body.querySelectorAll('button[data-action]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const id = Number(btn.closest('tr').dataset.id);
+          openViewModal(id);
+        });
+      });
+
+      renderFooterTotals(rows);
+      updateListMetrics();
+    }
+
+    function renderFooterTotals(rows){
+      let sumFee = 0, sumWire = 0, sumExtraModem = 0, sumExtraPatchCord = 0, sumOtherAmount = 0, sumGrand = 0;
+      rows.forEach(i => {
+        const t = installTotals(i);
+        sumFee += t.fee; sumWire += t.wireTotal; sumExtraModem += i.extra_modem; sumExtraPatchCord += i.extra_patch_cord; sumOtherAmount += (i.other_item_amount || 0); sumGrand += t.grand;
+      });
+      document.getElementById('fInstallCharge').textContent = money(sumFee);
+      document.getElementById('fWireTotal').textContent = money(sumWire);
+      document.getElementById('fExtraModem').textContent = money(sumExtraModem);
+      document.getElementById('fExtraPatchCord').textContent = money(sumExtraPatchCord);
+      document.getElementById('fOtherAmount').textContent = money(sumOtherAmount);
+      document.getElementById('fGrandTotal').textContent = money(sumGrand);
+    }
+
+    function updateListMetrics(){
+      const totalInst = installations.length;
+      let totalFee = 0, totalExtra = 0, totalGrand = 0;
+      const now = new Date();
+      let monthCount = 0;
+      installations.forEach(i => {
+        const t = installTotals(i);
+        totalFee += t.fee; totalExtra += t.extra; totalGrand += t.grand;
+        const dt = new Date(i.date);
+        if (dt.getFullYear() === now.getFullYear() && dt.getMonth() === now.getMonth()) monthCount++;
+      });
+      document.getElementById('mTotalInst').textContent = totalInst;
+      document.getElementById('mTotalFee').textContent = 'Rs ' + money(totalFee);
+      document.getElementById('mTotalExtra').textContent = 'Rs ' + money(totalExtra);
+      document.getElementById('mGrandTotal').textContent = 'Rs ' + money(totalGrand);
+      document.getElementById('mMonthCount').textContent = monthCount;
+    }
+
+    /* ---------------- VIEW INSTALLATION MODAL ---------------- */
+    const viewOverlay = document.getElementById('viewOverlay');
+    function openViewModal(id){
+      const inst = installations.find(i => i.id === id);
+      if (!inst) return;
+      const t = installTotals(inst);
+      document.getElementById('viewRef').textContent = installRef(inst.id);
+      document.getElementById('viewUserId').textContent = inst.user_id;
+      document.getElementById('viewCity').textContent = inst.city || '—';
+      document.getElementById('viewDate').textContent = toISODate(inst.date);
+      document.getElementById('viewRemarks').textContent = inst.remarks || '—';
+      document.getElementById('viewLinesBody').innerHTML = `
+        <tr><td><strong>Modem Type</strong></td><td>${inst.modem_type}</td></tr>
+        <tr><td><strong>Installation Charge</strong></td><td>Rs ${money(inst.installation_charge)}</td></tr>
+        <tr><td><strong>Modem / Wire 50m / Patch Cord x2</strong></td><td>FREE ✓</td></tr>
+        <tr><td><strong>Extra Wire</strong></td><td>${inst.wire_meters || 0} m &times; Rs ${money(inst.wire_rate)}/m = Rs ${money(t.wireTotal)}</td></tr>
+        <tr><td><strong>Extra Modem</strong></td><td>Rs ${money(inst.extra_modem)}</td></tr>
+        <tr><td><strong>Extra Patch Cord</strong></td><td>Rs ${money(inst.extra_patch_cord)}</td></tr>
+        <tr><td><strong>Other Item</strong></td><td>${inst.other_item_name ? `${inst.other_item_name} — Rs ${money(inst.other_item_amount)}` : '—'}</td></tr>
+      `;
+      document.getElementById('viewFee').textContent = 'Rs ' + money(t.fee);
+      document.getElementById('viewExtra').textContent = 'Rs ' + money(t.extra);
+      document.getElementById('viewGrand').textContent = 'Rs ' + money(t.grand);
+      viewOverlay.classList.add('show');
+    }
+    document.getElementById('viewCloseBtn').onclick = () => viewOverlay.classList.remove('show');
+    document.getElementById('viewPrintBtn').onclick = () => window.print();
+    viewOverlay.addEventListener('click', e => { if (e.target === viewOverlay) viewOverlay.classList.remove('show'); });
+
+    /* =========================================================
+       TAB 3: RETURNED MATERIAL
+       ========================================================= */
+    function populateReturnForm(){
+      const instSel = document.getElementById('rInstallation');
+      instSel.innerHTML = installations.slice().sort((a,b) => b.id - a.id)
+        .map(i => `<option value="${i.id}">${installRef(i.id)} — ${i.user_id}</option>`).join('');
+    }
+
+    document.getElementById('rSaveBtn').onclick = () => {
+      const installId = Number(document.getElementById('rInstallation').value);
+      const item = document.getElementById('rItem').value;
+      const qty = Number(document.getElementById('rQty').value);
+      const reason = document.getElementById('rReason').value.trim();
+
+      const inst = installations.find(i => i.id === installId);
+      if (!inst){ showToast('Select an installation first', 'danger'); return; }
+      if (!qty || qty <= 0){ showToast('Return qty must be greater than zero', 'danger'); return; }
+
+      const id = ++returnSeq;
+      returns.push({ id, installId, item, qty, reason: reason || '—', date: toISODate(new Date()) });
+      if (stockItems[item]) stockItems[item].stock += qty;
+      saveReturnsToStorage();
+      saveStockToStorage();
+
+      document.getElementById('rQty').value = 1;
+      document.getElementById('rReason').value = '';
+      renderReturns();
+      showToast(`${qty} × ${stockItems[item] ? stockItems[item].name : item} returned to stock from ${installRef(installId)}`, 'success');
+    };
+
+    function renderReturns(){
+      const body = document.getElementById('returnsBody');
+      const rows = returns.slice().sort((a,b) => b.id - a.id);
+      body.innerHTML = rows.map(r => {
+        const inst = installations.find(i => i.id === r.installId);
+        return `<tr>
+          <td><code>RET-${r.id}</code></td>
+          <td>${inst ? inst.user_id : '—'}</td>
+          <td>${stockItems[r.item] ? stockItems[r.item].name : r.item}</td>
+          <td><strong>${r.qty}</strong></td>
+          <td style="color:var(--text-muted);">${r.reason}</td>
+          <td>${r.date}</td>
+        </tr>`;
+      }).join('') || `<tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:16px;">No material returned yet</td></tr>`;
+    }
+
+    /* ---------------- SEARCH (List tab) ---------------- */
+    document.getElementById('searchInput').addEventListener('input', (e) => {
+      if (document.getElementById('tab-list').classList.contains('active')) renderInstallations(e.target.value);
+    });
+
+    /* ---------------- TOOLBAR ---------------- */
+    document.getElementById('refreshBtn').onclick = () => {
+      renderInstallations('');
+      renderReturns();
+      document.getElementById('searchInput').value = '';
+      showToast('Installation data refreshed', 'success');
+    };
+    document.getElementById('printBtn').onclick = () => window.print();
+
+    /* ---------------- IMPORT (flexible header matching — picks up User ID, City,
+       Installation (charge), Extra Wire, Extra Modem, Extra Item columns wherever
+       they appear/whatever order they're in, then posts each row through the
+       exact same flow as a manual "Save Installation" — stock deducted, exchange
+       record written for the extra item, everything downstream updates. ---------------- */
+    const INSTALL_IMPORT_HEADER_ALIASES = {
+      user_id:             ['userid', 'user', 'customerid', 'user_id'],
+      city:                ['city'],
+      date:                ['date', 'installdate', 'installationdate'],
+      modem_type:          ['modemtype', 'modem', 'type'],
+      installation_charge: ['installation', 'installationcharge', 'installationfee', 'charge', 'fee'],
+      extra_wire:          ['extrawire', 'wireextra', 'extrawiretotal', 'extrawireamount'],
+      extra_modem:         ['extramodem', 'modemextra', 'extramodam'],
+      extra_patch_cord:    ['extrapatchcord', 'patchcordextra', 'extracord'],
+      other_item_name:     ['otheritem', 'itemname', 'extraitemname'],
+      other_item_amount:   ['extraitem', 'otheritemamount', 'extraitemamount'],
+      remarks:             ['remarks', 'notes'],
+    };
+    function normalizeInstallHeader(h){ return String(h || '').toLowerCase().replace(/[\s_\-]/g, ''); }
+    function buildInstallFieldMap(headerRow){
+      const map = {};
+      headerRow.forEach((raw, idx) => {
+        const norm = normalizeInstallHeader(raw);
+        for (const [field, aliases] of Object.entries(INSTALL_IMPORT_HEADER_ALIASES)) {
+          if (aliases.includes(norm)) { map[idx] = field; break; }
+        }
+      });
+      return map;
+    }
+    function parseImportedInstallDate(value){
+      if (value instanceof Date && !isNaN(value)) return toISODate(value);
+      if (typeof value === 'number') {
+        const parsed = XLSX.SSF.parse_date_code(value);
+        if (parsed) return toISODate(new Date(Date.UTC(parsed.y, parsed.m - 1, parsed.d)));
+      }
+      if (typeof value === 'string' && value.trim()) return toISODate(value.trim());
+      return toISODate(new Date());
+    }
+    // Finds the real header row even though Export puts a merged title + subtitle
+    // banner above it — scans for the row that actually contains recognizable
+    // "User ID" / "City" style column names, in whatever order they appear.
+    function findInstallHeaderRowIndex(grid){
+      for (let r = 0; r < Math.min(grid.length, 10); r++) {
+        const map = buildInstallFieldMap(grid[r]);
+        const vals = Object.values(map);
+        if (vals.includes('user_id') && vals.includes('city')) return r;
+      }
+      return -1;
+    }
+
+    document.getElementById('importBtn').onclick = () => document.getElementById('importFileInput').click();
+
+    document.getElementById('importFileInput').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        try {
+          const workbook = XLSX.read(evt.target.result, { type: 'array', cellDates: true });
+          const sheet = workbook.Sheets[workbook.SheetNames[0]];
+          const grid = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true, defval: '' });
+          if (!grid.length) { showToast('That file has no rows to import', 'danger'); return; }
+
+          const headerRowIdx = findInstallHeaderRowIndex(grid);
+          if (headerRowIdx === -1) {
+            showToast('Import failed: could not find "User ID" and "City" columns', 'danger');
+            return;
+          }
+          const fieldMap = buildInstallFieldMap(grid[headerRowIdx]);
+
+          let added = 0, skippedDuplicate = 0;
+
+          for (let r = headerRowIdx + 1; r < grid.length; r++) {
+            const row = grid[r];
+            if (!row || row.every(c => c === '' || c === null || c === undefined)) continue;
+
+            const rec = {};
+            Object.entries(fieldMap).forEach(([idx, field]) => { rec[field] = row[idx]; });
+
+            const user_id = String(rec.user_id || '').trim();
+            if (!user_id || user_id.toUpperCase() === 'TOTAL') continue; // skip blank/totals row
+            const city = String(rec.city || '').trim();
+
+            const date = parseImportedInstallDate(rec.date);
+
+            // Don't re-post the same customer's installation for the same date
+            // twice — running the same file import again would otherwise double
+            // the stock deduction and billing every time.
+            if (installations.some(i => i.user_id.toLowerCase() === user_id.toLowerCase() && toISODate(i.date) === date)) {
+              skippedDuplicate++;
+              continue;
+            }
+
+            let modem_type = String(rec.modem_type || '').trim().toUpperCase();
+            if (!MODEM_RATE.hasOwnProperty(modem_type)) modem_type = 'EPON';
+
+            const installation_charge = (rec.installation_charge !== undefined && rec.installation_charge !== '')
+              ? (Number(rec.installation_charge) || 0)
+              : MODEM_RATE[modem_type];
+
+            // "Extra Wire" is taken as a single already-billed Rs amount — the same
+            // convention this file already uses elsewhere (wire_rate holds the
+            // amount, wire_meters is set to 1 as a unit multiplier) rather than a
+            // separate rate + meters breakdown.
+            const extraWireAmount = Number(rec.extra_wire) || 0;
+            const wire_rate = extraWireAmount;
+            const wire_meters = extraWireAmount > 0 ? 1 : 0;
+
+            const extra_modem = Number(rec.extra_modem) || 0;
+            const extra_patch_cord = Number(rec.extra_patch_cord) || 0;
+            const other_item_name = String(rec.other_item_name || '').trim();
+            const other_item_amount = Number(rec.other_item_amount) || 0;
+            const remarks = String(rec.remarks || '').trim();
+
+            const wire_total = Math.round(wire_rate * wire_meters * 100) / 100;
+            const inst = {
+              id: ++installSeq, user_id, city, modem_type, installation_charge,
+              wire_rate, wire_meters, wire_total, extra_modem, extra_patch_cord,
+              other_item_name, other_item_amount, remarks, date,
+            };
+            installations.push(inst);
+            if (other_item_amount > 0) addExchangeRecord(inst, other_item_name || 'Other Item', other_item_amount);
+
+            // Same stock deduction as a manual save: 1 modem + 50m wire + 2 patch
+            // cords free allowance, plus one extra unit for each extra charged.
+            stockItems.modem.stock -= 1 + (extra_modem > 0 ? 1 : 0);
+            stockItems.wire.stock -= 50 + wire_meters;
+            stockItems.patchcord.stock -= 2 + (extra_patch_cord > 0 ? 1 : 0);
+
+            added++;
+          }
+
+          if (!added && !skippedDuplicate) { showToast('No valid installation rows found in that file', 'danger'); return; }
+
+          saveInstallationsToStorage();
+          saveStockToStorage();
+          switchTab('list');
+
+          const notes = [];
+          if (skippedDuplicate) notes.push(`${skippedDuplicate} duplicate(s) skipped (same User ID + date already recorded)`);
+
+          if (added) {
+            showToast(`Import done — ${added} installation(s) posted, stock updated${notes.length ? ' • ' + notes.join(', ') : ''}`, 'success');
+          } else {
+            showToast(`Nothing imported${notes.length ? ' — ' + notes.join(', ') : ''}`, 'danger');
+          }
+        } catch (err) {
+          showToast('Import failed: file could not be read as Excel/CSV', 'danger');
+        } finally {
+          e.target.value = ''; // allow re-selecting the same file later
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    });
+
+    /* ---------------- EXPORT (styled .xlsx — branded banner, colored header, banded rows, extra-charge highlight, totals) ---------------- */
+    document.getElementById('exportBtn').onclick = () => {
+      const COLS = 16;
+      const HEADERS = ['Date', 'User ID', 'City', 'Modem Type', 'Installation Charge (Rs)', 'Modem (Free)', 'Wire 50m (Free)', 'Patch Cord x2 (Free)', 'Extra Wire (Rs/m)', 'Extra Wire Meters', 'Extra Wire Total (Rs)', 'Extra Modem (Rs)', 'Extra Patch Cord (Rs)', 'Other Item', 'Other Item Amount (Rs)', 'Grand Total (Rs)'];
+      const MONEY_COLS = [4, 8, 10, 11, 12, 14, 15];
+
+      // Brand palette pulled from this page's own CSS variables, so the exported
+      // file visually matches the app instead of looking like a generic dump.
+      const NAVY = '146C2E', WHITE = 'FFFFFF', TEXT_DARK = '1E293B', BORDER = 'CBD5E1', BAND = 'F0F4F8', ORANGE = 'D97706';
+
+      const thinBorder = { style: 'thin', color: { rgb: BORDER } };
+      const borderAll = { top: thinBorder, bottom: thinBorder, left: thinBorder, right: thinBorder };
+
+      const titleStyle = { font: { name: 'Calibri', sz: 16, bold: true, color: { rgb: WHITE } }, fill: { fgColor: { rgb: NAVY } }, alignment: { horizontal: 'center', vertical: 'center' } };
+      const subtitleStyle = { font: { name: 'Calibri', sz: 10, italic: true, color: { rgb: '64748B' } }, alignment: { horizontal: 'center' } };
+      const headerStyle = { font: { name: 'Calibri', sz: 10.5, bold: true, color: { rgb: WHITE } }, fill: { fgColor: { rgb: NAVY } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true }, border: borderAll };
+      const totalStyle = { font: { name: 'Calibri', sz: 11, bold: true, color: { rgb: WHITE } }, fill: { fgColor: { rgb: NAVY } }, alignment: { horizontal: 'center', vertical: 'center' }, border: borderAll };
+
+      function rowStyle(bandFill, hasExtra, colIndex) {
+        const isGrandCol = colIndex === 15;
+        return {
+          font: { name: 'Calibri', sz: 10, color: { rgb: (hasExtra && isGrandCol) ? ORANGE : TEXT_DARK }, bold: hasExtra && isGrandCol },
+          fill: { fgColor: { rgb: hasExtra ? 'FEF3E2' : (bandFill ? BAND : WHITE) } },
+          alignment: { horizontal: colIndex === 13 ? 'left' : 'center', vertical: 'center' },
+          border: borderAll,
+        };
+      }
+
+      const aoa = [];
+      aoa.push(['Air Touch Enterprise — Installations Report', ...Array(COLS - 1).fill('')]);
+      aoa.push([`Generated on ${toISODate(new Date())}  •  ${installations.length} installations`, ...Array(COLS - 1).fill('')]);
+      aoa.push(HEADERS);
+      installations.forEach(i => {
+        const t = installTotals(i);
+        aoa.push([new Date(toISODate(i.date)), i.user_id, i.city || '', i.modem_type, i.installation_charge, 'FREE', 'FREE', 'FREE', i.wire_rate || 0, i.wire_meters || 0, t.wireTotal, i.extra_modem || 0, i.extra_patch_cord || 0, i.other_item_name || '', i.other_item_amount || 0, t.grand]);
+      });
+      const totalFee = installations.reduce((s, i) => s + (Number(i.installation_charge) || 0), 0);
+      const totalExtra = installations.reduce((s, i) => s + installTotals(i).extra, 0);
+      const totalGrand = installations.reduce((s, i) => s + installTotals(i).grand, 0);
+      const totalsRowIndex = 3 + installations.length;
+      const totalsRow = Array(COLS).fill('');
+      totalsRow[0] = 'TOTAL'; totalsRow[4] = totalFee; totalsRow[10] = totalExtra; totalsRow[15] = totalGrand;
+      aoa.push(totalsRow);
+
+      const worksheet = XLSX.utils.aoa_to_sheet(aoa);
+      worksheet['!cols'] = [{wch:12},{wch:10},{wch:8},{wch:12},{wch:14},{wch:11},{wch:12},{wch:14},{wch:13},{wch:14},{wch:14},{wch:13},{wch:15},{wch:16},{wch:18},{wch:14}];
+      worksheet['!rows'] = [{hpt:26},{hpt:16},{hpt:28}];
+      worksheet['!merges'] = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: COLS - 1 } },
+        { s: { r: 1, c: 0 }, e: { r: 1, c: COLS - 1 } },
+      ];
+      worksheet['!freeze'] = { xSplit: 0, ySplit: 3 };
+      worksheet['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 2, c: 0 }, e: { r: totalsRowIndex - 1, c: COLS - 1 } }) };
+
+      for (let c = 0; c < COLS; c++) {
+        const t = XLSX.utils.encode_cell({ r: 0, c });
+        if (worksheet[t]) worksheet[t].s = titleStyle;
+        const s = XLSX.utils.encode_cell({ r: 1, c });
+        if (worksheet[s]) worksheet[s].s = subtitleStyle;
+      }
+      for (let c = 0; c < COLS; c++) {
+        const ref = XLSX.utils.encode_cell({ r: 2, c });
+        if (worksheet[ref]) worksheet[ref].s = headerStyle;
+      }
+      installations.forEach((i, idx) => {
+        const t = installTotals(i);
+        const r = 3 + idx;
+        for (let c = 0; c < COLS; c++) {
+          const ref = XLSX.utils.encode_cell({ r, c });
+          if (!worksheet[ref]) continue;
+          worksheet[ref].s = rowStyle(idx % 2 === 1, t.extra > 0, c);
+          if (c === 0) worksheet[ref].z = 'yyyy-mm-dd';
+          if (MONEY_COLS.includes(c)) worksheet[ref].z = '#,##0';
+        }
+      });
+      for (let c = 0; c < COLS; c++) {
+        const ref = XLSX.utils.encode_cell({ r: totalsRowIndex, c });
+        if (!worksheet[ref]) continue;
+        worksheet[ref].s = totalStyle;
+        if (MONEY_COLS.includes(c)) worksheet[ref].z = '#,##0';
+      }
+
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Installations');
+      XLSX.writeFile(workbook, `installations_export_${toISODate(new Date())}.xlsx`);
+      showToast('Installations exported as a designed Excel (.xlsx)', 'success');
+    };
+
+    /* ---------------- NOTIFICATIONS ---------------- */
+    document.getElementById('bellBtn').onclick = () => {
+      document.getElementById('bellBadge').style.display = 'none';
+      showToast('Stock levels look fine for now', '');
+    };
+
+    /* ---------------- TOASTS ---------------- */
+    function showToast(msg, kind){
+      const stack = document.getElementById('toastStack');
+      const t = document.createElement('div');
+      t.className = `toast ${kind||''}`;
+      t.innerHTML = `<i class="fa-solid fa-circle-check"></i> ${msg}`;
+      stack.appendChild(t);
+      setTimeout(() => { t.classList.add('leaving'); setTimeout(() => t.remove(), 250); }, 2600);
+    }
+
+    /* ---------------- INIT ---------------- */
+    resetNewInstallForm();
+    renderInstallations('');
+    populateReturnForm();
+    renderReturns();
+    saveInstallationsToStorage();
+  </script>
+
+</body>
+</html>

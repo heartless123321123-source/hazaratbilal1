@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="ur" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Air Touch ERP - Installation Exchange</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <!-- xlsx-js-style: SheetJS-compatible (same global XLSX, same read/import API) but also
+       writes real cell styling (fills, fonts, borders) into the .xlsx file, which the plain
+       cdnjs 'xlsx' build cannot do — this is what makes the Export button's file look designed. -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+  <style>
+    :root {
+      --primary-blue: #0A3663;
+      --hover-blue: #0E4782;
+      --success-green: #208B3A;
+      --light-green: #2DC653;
+      --warning-orange: #D97706;
+      --danger-red: #DC2626;
+      --bg-gray: #F0F4F8;
+      --card-bg: #FFFFFF;
+      --text-dark: #1E293B;
+      --text-muted: #64748B;
+      --border-color: #CBD5E1;
+      --purple-accent: #7C3AED;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+    body { background-color: var(--bg-gray); color: var(--text-dark); display: flex; height: 100vh; overflow: hidden; }
+
+    .sidebar { width: 260px; background: var(--primary-blue); color: #ffffff; display: flex; flex-direction: column; box-shadow: 4px 0 12px rgba(0,0,0,0.15); z-index: 10; overflow-y: auto; }
+    .brand-header { padding: 16px 18px; background: rgba(0, 0, 0, 0.25); border-bottom: 4px solid var(--light-green); display: flex; align-items: center; gap: 10px; }
+    .brand-header i { font-size: 22px; color: var(--light-green); }
+    .brand-header h2 { font-size: 16px; font-weight: 800; letter-spacing: 0.5px; }
+
+    .nav-menu { padding: 12px 8px; display: flex; flex-direction: column; gap: 4px; }
+    .menu-group { display: flex; flex-direction: column; }
+    .menu-header { padding: 9px 12px; color: #FFFFFF; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: space-between; border-radius: 6px; cursor: pointer; transition: all 0.2s; }
+    .menu-header:hover { background: rgba(255, 255, 255, 0.1); }
+    .menu-header-title { display: flex; align-items: center; gap: 8px; }
+    .arrow-icon { font-size: 10px; transition: transform 0.2s; }
+
+    .tree-sub { display: none; flex-direction: column; padding-left: 20px; gap: 2px; margin-top: 2px; }
+    .menu-group.open .tree-sub { display: flex; }
+    .menu-group.open .arrow-icon { transform: rotate(90deg); }
+
+    .tree-item { padding: 6px 10px; color: #94A3B8; font-size: 11px; font-weight: 600; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+    .tree-item::before { content: '├─'; color: #475569; font-family: monospace; }
+    .tree-item:last-child::before { content: '└─'; }
+    .tree-item:hover, .tree-item.active { color: #FFFFFF; background: rgba(255, 255, 255, 0.12); }
+    .tree-item.active { color: var(--light-green); font-weight: 700; }
+
+    .main-wrapper { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+    .top-bar { background: var(--card-bg); padding: 10px 24px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; gap: 20px; }
+    .global-search { display: flex; align-items: center; background: #F1F5F9; border: 1px solid var(--border-color); border-radius: 6px; padding: 7px 14px; width: 420px; gap: 10px; }
+    .global-search input { border: none; background: transparent; outline: none; font-size: 12px; width: 100%; }
+
+    .top-right { display: flex; align-items: center; gap: 18px; }
+    .bell-icon { position: relative; cursor: pointer; font-size: 16px; color: var(--text-dark); }
+    .bell-badge { position: absolute; top: -6px; right: -8px; background: var(--danger-red); color: white; font-size: 9px; font-weight: 800; border-radius: 50%; padding: 2px 5px; }
+
+    .header-section { background: #FFFFFF; padding: 12px 24px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; }
+    .breadcrumbs { font-size: 11px; color: var(--text-muted); font-weight: 600; display: flex; align-items: center; gap: 6px; }
+    .breadcrumbs span.active { color: var(--primary-blue); font-weight: 700; }
+    .breadcrumbs span.link { cursor: pointer; }
+    .breadcrumbs span.link:hover { color: var(--primary-blue); text-decoration: underline; }
+
+    .action-toolbar { display: flex; gap: 8px; }
+    .btn { padding: 7px 12px; border-radius: 5px; font-size: 11px; font-weight: 700; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s; }
+    .btn:active { transform: scale(0.96); }
+    .btn-primary { background: var(--primary-blue); color: white; }
+    .btn-success { background: var(--success-green); color: white; }
+    .btn-purple { background: var(--purple-accent); color: white; }
+    .btn-outline { background: #F8FAFC; border: 1px solid var(--border-color); color: var(--text-dark); }
+    .btn-outline:hover { background: #E2E8F0; }
+    .btn-danger { background: var(--danger-red); color: white; }
+    .btn-danger:hover { background: #B91C1C; }
+
+    .content-body { flex: 1; padding: 16px 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
+
+    .metrics-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .metric-card { background: var(--card-bg); border-radius: 6px; padding: 12px; border: 1px solid var(--border-color); display: flex; flex-direction: column; justify-content: space-between; gap: 4px; transition: transform .15s ease; }
+    .metric-card:hover { transform: translateY(-2px); }
+    .metric-card label { font-size: 9px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
+    .metric-card h3 { font-size: 16px; font-weight: 800; color: var(--primary-blue); }
+
+    .panel-card { background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border-color); display: flex; flex-direction: column; overflow: hidden; }
+    .panel-header { padding: 10px 14px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: #F8FAFC; }
+    .panel-header h3 { font-size: 12px; font-weight: 700; color: var(--primary-blue); display: flex; align-items: center; gap: 6px; }
+    .panel-body { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 11px; }
+    thead th { background: var(--primary-blue); color: white; text-align: left; padding: 8px 10px; font-weight: 600; }
+    tbody td { padding: 8px 10px; border-bottom: 1px solid var(--border-color); vertical-align: middle; }
+    tbody tr:hover { background-color: #F1F5F9; }
+    tbody tr.removing { animation: fadeOut .2s ease forwards; }
+    @keyframes fadeOut { to { opacity: 0; } }
+
+    .badge-info { background: #DBEAFE; color: #1D4ED8; padding: 2px 6px; border-radius: 10px; font-weight: 700; }
+    .badge-purple { background: #EDE9FE; color: var(--purple-accent); padding: 2px 6px; border-radius: 10px; font-weight: 700; }
+
+    .row-actions { display: flex; gap: 4px; }
+    .btn-icon { width: 24px; height: 24px; border-radius: 4px; border: 1px solid var(--border-color); background: white; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 10px; color: var(--text-dark); transition: background .15s ease; }
+    .btn-icon:hover { background: #E2E8F0; }
+
+    .form-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+    .form-row label { font-size: 10px; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 3px; }
+    .form-row input, .form-row select, .panel-body input, .panel-body select, .panel-body textarea {
+      padding: 7px 9px; border: 1px solid var(--border-color); border-radius: 5px; font-size: 11.5px; width: 100%; font-family: inherit;
+    }
+
+    .form-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
+
+    .toast-stack { position: fixed; bottom: 18px; right: 18px; display: flex; flex-direction: column; gap: 8px; z-index: 999; }
+    .toast { background: var(--primary-blue); color: white; padding: 10px 16px; border-radius: 6px; font-size: 11px; font-weight: 700; box-shadow: 0 8px 20px rgba(0,0,0,.25); display: flex; align-items: center; gap: 8px; animation: toastIn .25s ease; }
+    .toast.success { background: var(--success-green); }
+    .toast.danger { background: var(--danger-red); }
+    @keyframes toastIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .toast.leaving { animation: toastOut .25s ease forwards; }
+    @keyframes toastOut { to { opacity: 0; transform: translateX(20px); } }
+
+    .table-scroll { overflow-x:auto; }
+    table.data-table { width:100%; border-collapse:collapse; font-size:10.5px; }
+    table.data-table thead th { background: var(--primary-blue); color:#fff; padding:7px 8px; text-align:left; font-weight:700; white-space:nowrap; position: sticky; top:0; }
+    table.data-table tbody td { padding:7px 8px; border-bottom:1px solid var(--border-color); white-space:nowrap; }
+    table.data-table tbody tr:hover { background:#F1F5F9; }
+    table.data-table tfoot td { padding:9px 8px; background:#F8FAFC; border-top:2px solid var(--primary-blue); font-weight:800; color:var(--primary-blue); white-space:nowrap; }
+    .extra-cell { color: var(--warning-orange); font-weight: 700; white-space: nowrap; }
+    .not-linked-pill { background:#F1F5F9; color: var(--text-muted); padding:2px 7px; border-radius:10px; font-weight:700; font-size:10px; }
+  </style>
+</head>
+<body>
+
+  <aside class="sidebar">
+    <div class="brand-header">
+      <i class="fa-solid fa-wifi"></i>
+      <h2>AIR TOUCH ERP</h2>
+    </div>
+
+    <nav class="nav-menu">
+      <div class="menu-group">
+        <div class="menu-header" onclick="location.href='dashboard.html'">
+          <div class="menu-header-title"><i class="fa-solid fa-house"></i> 🏠 Dashboard</div>
+        </div>
+      </div>
+
+      <div class="menu-group">
+        <div class="menu-header" onclick="toggleMenu(this)">
+          <div class="menu-header-title"><i class="fa-solid fa-boxes-stacked"></i> 📦 Inventory</div>
+          <i class="fa-solid fa-chevron-right arrow-icon"></i>
+        </div>
+        <div class="tree-sub">
+          <div class="tree-item" onclick="location.href='store_inventory.html'">Store Stock</div>
+          <div class="tree-item" onclick="location.href='purchase.html'">Purchase</div>
+          <div class="tree-item" onclick="location.href='dispatch.html'">Dispatch</div>
+          <div class="tree-item" onclick="location.href='ledger.html'">Ledger</div>
+        </div>
+      </div>
+
+      <div class="menu-group open">
+        <div class="menu-header" onclick="toggleMenu(this)">
+          <div class="menu-header-title"><i class="fa-solid fa-wrench"></i> 🔧 Installation</div>
+          <i class="fa-solid fa-chevron-right arrow-icon"></i>
+        </div>
+        <div class="tree-sub">
+          <div class="tree-item" onclick="location.href='installation.html'">New Installation</div>
+          <div class="tree-item" onclick="location.href='installation.html'">Installation List</div>
+          <div class="tree-item" onclick="location.href='installation.html'">Returned Material</div>
+          <div class="tree-item active">Installation Exchange</div>
+        </div>
+      </div>
+
+      <div class="menu-group">
+        <div class="menu-header" onclick="toggleMenu(this)">
+          <div class="menu-header-title"><i class="fa-solid fa-chart-pie"></i> 📊 Reports</div>
+          <i class="fa-solid fa-chevron-right arrow-icon"></i>
+        </div>
+        <div class="tree-sub">
+          <div class="tree-item" onclick="location.href='installation.html'">Daily Summary</div>
+          <div class="tree-item" onclick="location.href='installation.html'">Monthly Report</div>
+          <div class="tree-item" onclick="location.href='installation.html'">City Wise Stock</div>
+        </div>
+      </div>
+
+      <div class="menu-group">
+        <div class="menu-header" onclick="location.href='employees.html'"><div class="menu-header-title"><i class="fa-solid fa-users"></i> 👨 Employees</div></div>
+      </div>
+
+      <div class="menu-group">
+        <div class="menu-header" onclick="location.href='settings.html'"><div class="menu-header-title"><i class="fa-solid fa-gear"></i> ⚙ Settings</div></div>
+      </div>
+    </nav>
+  </aside>
+
+  <main class="main-wrapper">
+
+    <header class="top-bar">
+      <div class="global-search">
+        <i class="fa-solid fa-magnifying-glass" style="color:var(--text-muted);"></i>
+        <input type="text" id="searchInput" placeholder="🔍 Search Item Name / User ID...">
+      </div>
+
+      <div class="top-right">
+        <div class="bell-icon" title="Notifications" id="bellBtn">
+          <i class="fa-solid fa-bell"></i>
+        </div>
+        <div style="font-size:11px; font-weight:700; color:var(--primary-blue);">
+          <i class="fa-solid fa-user-circle"></i> Admin Profile
+        </div>
+      </div>
+    </header>
+
+    <section class="header-section">
+      <div class="breadcrumbs">
+        <span class="link" onclick="location.href='dashboard.html'">Dashboard</span> &gt;
+        <span class="link" onclick="location.href='installation.html'">Installation</span> &gt;
+        <span class="active">Installation Exchange</span>
+      </div>
+
+      <div class="action-toolbar">
+        <button class="btn btn-outline" id="exportBtn"><i class="fa-solid fa-file-export"></i> 📤 Export Excel</button>
+        <button class="btn btn-outline" id="printBtn"><i class="fa-solid fa-print"></i> 🖨 Print</button>
+        <button class="btn btn-outline" id="refreshBtn"><i class="fa-solid fa-rotate"></i> 🔄 Refresh</button>
+      </div>
+    </section>
+
+    <div class="content-body">
+
+      <section class="metrics-grid" id="exMetrics">
+        <div class="metric-card"><label>🔄 Total Exchange Items</label><h3 id="mTotalItems">0</h3></div>
+        <div class="metric-card"><label>💰 Total Amount Collected</label><h3 id="mTotalAmount">0</h3></div>
+        <div class="metric-card"><label>📅 This Month</label><h3 id="mMonthCount">0</h3></div>
+        <div class="metric-card"><label>🔌 Linked Installations</label><h3 id="mLinkedCount">0</h3></div>
+      </section>
+
+      <section class="panel-card">
+        <div class="panel-header">
+          <h3><i class="fa-solid fa-right-left"></i> Add Exchange Item</h3>
+          <span style="font-size:10px; color:var(--text-muted);">Record any item sold besides Modem, Wire, or Patch Cord</span>
+        </div>
+        <div class="panel-body">
+          <div class="form-row" style="grid-template-columns: 1fr 1fr;">
+            <div>
+              <label>User ID</label>
+              <input type="text" id="eUserId" placeholder="e.g. dhr824">
+            </div>
+            <div>
+              <label>City</label>
+              <input type="text" id="eCity" placeholder="e.g. TLS / BTK">
+            </div>
+          </div>
+          <div class="form-row">
+            <div>
+              <label>Item Name</label>
+              <input type="text" id="eItemName" placeholder="e.g. Router, Splitter, TV Box">
+            </div>
+            <div>
+              <label>Amount (Rs)</label>
+              <input type="number" id="eAmount" min="0" value="0">
+            </div>
+            <div>
+              <label>Date</label>
+              <input type="date" id="eDate">
+            </div>
+          </div>
+          <div class="form-row" style="grid-template-columns: 1fr;">
+            <div>
+              <label>Remarks</label>
+              <input type="text" id="eRemarks" placeholder="e.g. Customer bought extra TV box">
+            </div>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-outline" id="eResetBtn">Reset Form</button>
+            <button class="btn btn-purple" id="eSaveBtn"><i class="fa-solid fa-check"></i> Save Exchange Item</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel-card">
+        <div class="panel-header">
+          <h3><i class="fa-solid fa-list-check"></i> Exchange Records</h3>
+          <div style="display:flex; align-items:center; gap:12px;">
+            <span style="font-size:10px; color:var(--text-muted);">Items sold besides Modem, Wire, and Patch Cord — also pulled in automatically from New Installation</span>
+            <button class="btn btn-purple" id="addRowBtn" style="white-space:nowrap;"><i class="fa-solid fa-plus"></i> Add Row</button>
+          </div>
+        </div>
+        <div class="panel-body" style="padding:0;">
+          <div class="table-scroll">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Installation</th>
+                  <th>User ID</th>
+                  <th>City</th>
+                  <th>Item Name</th>
+                  <th>Amount (Rs)</th>
+                  <th>Date</th>
+                  <th>Remarks</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="exchangeBody"></tbody>
+              <tfoot>
+                <tr>
+                  <td colspan="5" style="text-align:right;">TOTAL</td>
+                  <td id="fTotalAmount">0</td>
+                  <td></td><td></td><td></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <div class="toast-stack" id="toastStack"></div>
+
+  <script>
+    function toggleMenu(element) {
+      element.parentElement.classList.toggle('open');
+    }
+
+    function money(n){ return (Math.round((n||0)*100)/100).toLocaleString('en-US', {maximumFractionDigits: 2}); }
+    function toISODate(value){
+      if (!value) return new Date().toISOString().slice(0,10);
+      if (value instanceof Date && !isNaN(value)) return value.toISOString().slice(0,10);
+      const parsed = new Date(value);
+      return isNaN(parsed) ? new Date().toISOString().slice(0,10) : parsed.toISOString().slice(0,10);
+    }
+    function installRef(id){ return `INST-${id}`; }
+
+    /* ---------------- SHARED DATA (localStorage) — reads/writes data shared with installation.html ---------------- */
+    function loadInstallations(){
+      try { return JSON.parse(localStorage.getItem('installations_data') || '[]'); } catch(e){ return []; }
+    }
+    function loadExchangeRecords(){
+      try { return JSON.parse(localStorage.getItem('exchangeRecords') || '[]'); } catch(e){ return []; }
+    }
+    function saveExchangeRecords(records){
+      try { localStorage.setItem('exchangeRecords', JSON.stringify(records)); } catch(e){}
+    }
+
+    let installations = [];
+    let exchangeRecords = [];
+
+    function loadAllData(){
+      installations = loadInstallations();
+      exchangeRecords = loadExchangeRecords();
+    }
+
+    /* ---------------- FORM ---------------- */
+    function resetExchangeForm(){
+      document.getElementById('eUserId').value = '';
+      document.getElementById('eCity').value = '';
+      document.getElementById('eItemName').value = '';
+      document.getElementById('eAmount').value = 0;
+      document.getElementById('eDate').value = toISODate(new Date());
+      document.getElementById('eRemarks').value = '';
+    }
+    document.getElementById('eResetBtn').onclick = resetExchangeForm;
+
+    document.getElementById('eSaveBtn').onclick = () => {
+      const user_id = document.getElementById('eUserId').value.trim();
+      const city = document.getElementById('eCity').value.trim();
+      const item_name = document.getElementById('eItemName').value.trim();
+      const amount = Number(document.getElementById('eAmount').value) || 0;
+      const date = document.getElementById('eDate').value || toISODate(new Date());
+      const remarks = document.getElementById('eRemarks').value.trim();
+
+      if (!item_name){ showToast('Item name is required', 'danger'); return; }
+      if (!amount || amount <= 0){ showToast('Amount must be greater than zero', 'danger'); return; }
+      if (!user_id){ showToast('User ID is required', 'danger'); return; }
+
+      exchangeRecords = loadExchangeRecords();
+      const nextId = exchangeRecords.length ? Math.max(...exchangeRecords.map(r => r.id)) + 1 : 1;
+      exchangeRecords.push({ id: nextId, installId: null, user_id, city, item_name, amount, date, remarks });
+      saveExchangeRecords(exchangeRecords);
+
+      resetExchangeForm();
+      renderExchangeTable();
+      showToast(`${item_name} (Rs ${money(amount)}) added to Installation Exchange`, 'success');
+    };
+
+    /* ---------------- TABLE ---------------- */
+    function renderExchangeTable(filter){
+      const q = (filter !== undefined ? filter : (document.getElementById('searchInput').value || '')).toLowerCase();
+      exchangeRecords = loadExchangeRecords();
+
+      const rows = exchangeRecords
+        .filter(r => {
+          if (!q) return true;
+          return (r.item_name || '').toLowerCase().includes(q) || (r.user_id || '').toLowerCase().includes(q) || (r.city || '').toLowerCase().includes(q);
+        })
+        .sort((a,b) => b.id - a.id);
+
+      const body = document.getElementById('exchangeBody');
+      body.innerHTML = rows.map(r => `
+        <tr data-id="${r.id}">
+          <td><code>EXC-${r.id}</code></td>
+          <td>${r.installId ? `<span class="badge-info">${installRef(r.installId)}</span>` : `<span class="not-linked-pill">Not Linked</span>`}</td>
+          <td><strong>${r.user_id || '—'}</strong></td>
+          <td>${r.city || '—'}</td>
+          <td>${r.item_name}</td>
+          <td class="extra-cell">${money(r.amount)}</td>
+          <td>${r.date}</td>
+          <td style="color:var(--text-muted);">${r.remarks || '—'}</td>
+          <td>
+            <div class="row-actions">
+              <button class="btn-icon" title="Delete" data-action="delete"><i class="fa-solid fa-trash"></i></button>
+            </div>
+          </td>
+        </tr>
+      `).join('') || `<tr><td colspan="9" style="text-align:center; color:var(--text-muted); padding:16px;">No exchange items recorded yet</td></tr>`;
+
+      body.querySelectorAll('button[data-action="delete"]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const id = Number(btn.closest('tr').dataset.id);
+          const tr = btn.closest('tr');
+          tr.classList.add('removing');
+          setTimeout(() => {
+            exchangeRecords = loadExchangeRecords().filter(r => r.id !== id);
+            saveExchangeRecords(exchangeRecords);
+            renderExchangeTable();
+            showToast('Exchange item deleted', 'danger');
+          }, 180);
+        });
+      });
+
+      const totalAmount = rows.reduce((s,r) => s + (r.amount || 0), 0);
+      document.getElementById('fTotalAmount').textContent = money(totalAmount);
+
+      updateMetrics();
+    }
+
+    /* ---------------- INLINE ADD ROW ---------------- */
+    document.getElementById('addRowBtn').addEventListener('click', () => {
+      if (document.getElementById('newRowTr')) return; // already adding a row
+      const body = document.getElementById('exchangeBody');
+      const emptyMsgRow = body.querySelector('td[colspan]');
+      if (emptyMsgRow) body.innerHTML = '';
+
+      const tr = document.createElement('tr');
+      tr.id = 'newRowTr';
+      tr.innerHTML = `
+        <td><span style="color:var(--text-muted);">NEW</span></td>
+        <td><span class="not-linked-pill">Not Linked</span></td>
+        <td><input type="text" id="newRowUserId" placeholder="User ID"></td>
+        <td><input type="text" id="newRowCity" placeholder="City"></td>
+        <td><input type="text" id="newRowItemName" placeholder="Item Name"></td>
+        <td><input type="number" id="newRowAmount" min="0" value="0"></td>
+        <td><input type="date" id="newRowDate"></td>
+        <td><input type="text" id="newRowRemarks" placeholder="Remarks"></td>
+        <td>
+          <div class="row-actions">
+            <button class="btn-icon" title="Save" id="newRowSaveBtn" style="color:var(--success-green);"><i class="fa-solid fa-check"></i></button>
+            <button class="btn-icon" title="Cancel" id="newRowCancelBtn" style="color:var(--danger-red);"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+        </td>
+      `;
+      body.prepend(tr);
+      document.getElementById('newRowDate').value = toISODate(new Date());
+      document.getElementById('newRowUserId').focus();
+
+      document.getElementById('newRowCancelBtn').onclick = () => renderExchangeTable();
+
+      document.getElementById('newRowSaveBtn').onclick = () => {
+        const user_id = document.getElementById('newRowUserId').value.trim();
+        const city = document.getElementById('newRowCity').value.trim();
+        const item_name = document.getElementById('newRowItemName').value.trim();
+        const amount = Number(document.getElementById('newRowAmount').value) || 0;
+        const date = document.getElementById('newRowDate').value || toISODate(new Date());
+        const remarks = document.getElementById('newRowRemarks').value.trim();
+
+        if (!user_id){ showToast('User ID is required', 'danger'); return; }
+        if (!item_name){ showToast('Item name is required', 'danger'); return; }
+        if (!amount || amount <= 0){ showToast('Amount must be greater than zero', 'danger'); return; }
+
+        exchangeRecords = loadExchangeRecords();
+        const nextId = exchangeRecords.length ? Math.max(...exchangeRecords.map(r => r.id)) + 1 : 1;
+        exchangeRecords.push({ id: nextId, installId: null, user_id, city, item_name, amount, date, remarks });
+        saveExchangeRecords(exchangeRecords);
+
+        renderExchangeTable();
+        showToast(`${item_name} (Rs ${money(amount)}) added to Installation Exchange`, 'success');
+      };
+    });
+
+    function updateMetrics(){
+      const all = loadExchangeRecords();
+      const totalItems = all.length;
+      const totalAmount = all.reduce((s,r) => s + (r.amount || 0), 0);
+      const now = new Date();
+      const monthCount = all.filter(r => {
+        const d = new Date(r.date);
+        return !isNaN(d) && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+      }).length;
+      const linkedCount = new Set(all.filter(r => r.installId).map(r => r.installId)).size;
+
+      document.getElementById('mTotalItems').textContent = totalItems;
+      document.getElementById('mTotalAmount').textContent = money(totalAmount);
+      document.getElementById('mMonthCount').textContent = monthCount;
+      document.getElementById('mLinkedCount').textContent = linkedCount;
+    }
+
+    /* ---------------- SEARCH ---------------- */
+    document.getElementById('searchInput').addEventListener('input', (e) => renderExchangeTable(e.target.value));
+
+    /* ---------------- TOOLBAR ---------------- */
+    document.getElementById('refreshBtn').onclick = () => {
+      loadAllData();
+      document.getElementById('searchInput').value = '';
+      renderExchangeTable('');
+      showToast('Exchange data refreshed', 'success');
+    };
+    document.getElementById('printBtn').onclick = () => window.print();
+
+    /* ---------------- EXPORT (styled .xlsx — branded banner, colored header, banded rows, unlinked highlight, totals) ---------------- */
+    document.getElementById('exportBtn').onclick = () => {
+      const all = loadExchangeRecords();
+      const COLS = 8; // Exchange ID, Installation, User ID, City, Item Name, Amount, Date, Remarks
+      const HEADERS = ['Exchange ID', 'Installation', 'User ID', 'City', 'Item Name', 'Amount (Rs)', 'Date', 'Remarks'];
+
+      // Brand palette pulled from this page's own CSS variables, so the exported
+      // file visually matches the app instead of looking like a generic dump.
+      const NAVY = '146C2E', WHITE = 'FFFFFF', TEXT_DARK = '1E293B', BORDER = 'CBD5E1', BAND = 'F0F4F8', ORANGE = 'D97706';
+
+      const thinBorder = { style: 'thin', color: { rgb: BORDER } };
+      const borderAll = { top: thinBorder, bottom: thinBorder, left: thinBorder, right: thinBorder };
+
+      const titleStyle = { font: { name: 'Calibri', sz: 16, bold: true, color: { rgb: WHITE } }, fill: { fgColor: { rgb: NAVY } }, alignment: { horizontal: 'center', vertical: 'center' } };
+      const subtitleStyle = { font: { name: 'Calibri', sz: 10, italic: true, color: { rgb: '64748B' } }, alignment: { horizontal: 'center' } };
+      const headerStyle = { font: { name: 'Calibri', sz: 11, bold: true, color: { rgb: WHITE } }, fill: { fgColor: { rgb: NAVY } }, alignment: { horizontal: 'center', vertical: 'center' }, border: borderAll };
+      const totalStyle = { font: { name: 'Calibri', sz: 11, bold: true, color: { rgb: WHITE } }, fill: { fgColor: { rgb: NAVY } }, alignment: { horizontal: 'center', vertical: 'center' }, border: borderAll };
+
+      function rowStyle(bandFill, unlinked, colIndex) {
+        const isInstallCol = colIndex === 1;
+        return {
+          font: { name: 'Calibri', sz: 10.5, color: { rgb: (unlinked && isInstallCol) ? ORANGE : TEXT_DARK }, italic: !!(unlinked && isInstallCol) },
+          fill: { fgColor: { rgb: bandFill ? BAND : WHITE } },
+          alignment: { horizontal: colIndex === 4 || colIndex === 7 ? 'left' : 'center', vertical: 'center' },
+          border: borderAll,
+        };
+      }
+
+      const aoa = [];
+      aoa.push(['Air Touch Enterprise — Installation Exchange Report', '', '', '', '', '', '', '']);
+      aoa.push([`Generated on ${toISODate(new Date())}  •  ${all.length} records`, '', '', '', '', '', '', '']);
+      aoa.push(HEADERS);
+      all.forEach(r => {
+        aoa.push([`EXC-${r.id}`, r.installId ? installRef(r.installId) : 'Not Linked', r.user_id || '', r.city || '', r.item_name, r.amount, new Date(toISODate(r.date)), r.remarks || '']);
+      });
+      const totalAmount = all.reduce((s, r) => s + (Number(r.amount) || 0), 0);
+      const totalsRowIndex = 3 + all.length;
+      aoa.push(['TOTAL', '', '', '', '', totalAmount, '', '']);
+
+      const worksheet = XLSX.utils.aoa_to_sheet(aoa);
+      worksheet['!cols'] = [{wch:12},{wch:12},{wch:10},{wch:8},{wch:20},{wch:12},{wch:12},{wch:28}];
+      worksheet['!rows'] = [{hpt:26},{hpt:16}];
+      worksheet['!merges'] = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: COLS - 1 } },
+        { s: { r: 1, c: 0 }, e: { r: 1, c: COLS - 1 } },
+      ];
+      worksheet['!freeze'] = { xSplit: 0, ySplit: 3 };
+      worksheet['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 2, c: 0 }, e: { r: totalsRowIndex - 1, c: COLS - 1 } }) };
+
+      for (let c = 0; c < COLS; c++) {
+        const t = XLSX.utils.encode_cell({ r: 0, c });
+        if (worksheet[t]) worksheet[t].s = titleStyle;
+        const s = XLSX.utils.encode_cell({ r: 1, c });
+        if (worksheet[s]) worksheet[s].s = subtitleStyle;
+      }
+      for (let c = 0; c < COLS; c++) {
+        const ref = XLSX.utils.encode_cell({ r: 2, c });
+        if (worksheet[ref]) worksheet[ref].s = headerStyle;
+      }
+      all.forEach((r, idx) => {
+        const rIdx = 3 + idx;
+        for (let c = 0; c < COLS; c++) {
+          const ref = XLSX.utils.encode_cell({ r: rIdx, c });
+          if (!worksheet[ref]) continue;
+          worksheet[ref].s = rowStyle(idx % 2 === 1, !r.installId, c);
+          if (c === 5) worksheet[ref].z = '#,##0';
+          if (c === 6) worksheet[ref].z = 'yyyy-mm-dd';
+        }
+      });
+      for (let c = 0; c < COLS; c++) {
+        const ref = XLSX.utils.encode_cell({ r: totalsRowIndex, c });
+        if (!worksheet[ref]) continue;
+        worksheet[ref].s = totalStyle;
+        if (c === 5) worksheet[ref].z = '#,##0';
+      }
+
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Installation Exchange');
+      XLSX.writeFile(workbook, `installation_exchange_export_${toISODate(new Date())}.xlsx`);
+      showToast('Exchange records exported as a designed Excel (.xlsx)', 'success');
+    };
+
+    /* ---------------- TOASTS ---------------- */
+    function showToast(msg, kind){
+      const stack = document.getElementById('toastStack');
+      const t = document.createElement('div');
+      t.className = `toast ${kind||''}`;
+      t.innerHTML = `<i class="fa-solid fa-circle-check"></i> ${msg}`;
+      stack.appendChild(t);
+      setTimeout(() => { t.classList.add('leaving'); setTimeout(() => t.remove(), 250); }, 2600);
+    }
+
+    /* ---------------- INIT ---------------- */
+    loadAllData();
+    resetExchangeForm();
+    renderExchangeTable('');
+  </script>
+
+</body>
+</html>

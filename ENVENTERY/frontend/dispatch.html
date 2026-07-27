@@ -1,0 +1,1066 @@
+<!DOCTYPE html>
+<html lang="ur" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Air Touch ERP - Dispatch</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <!-- xlsx-js-style: SheetJS-compatible (same global XLSX, same read/import API) but also
+       writes real cell styling (fills, fonts, borders) into the .xlsx file, which the plain
+       cdnjs 'xlsx' build cannot do — this is what makes the Export button's file look designed. -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+  <style>
+    :root {
+      --primary-blue: #0A3663;
+      --hover-blue: #0E4782;
+      --success-green: #208B3A;
+      --light-green: #2DC653;
+      --warning-orange: #D97706;
+      --danger-red: #DC2626;
+      --bg-gray: #F0F4F8;
+      --card-bg: #FFFFFF;
+      --text-dark: #1E293B;
+      --text-muted: #64748B;
+      --border-color: #CBD5E1;
+      --purple-accent: #7C3AED;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+    body { background-color: var(--bg-gray); color: var(--text-dark); display: flex; height: 100vh; overflow: hidden; }
+
+    .sidebar { width: 260px; background: var(--primary-blue); color: #ffffff; display: flex; flex-direction: column; box-shadow: 4px 0 12px rgba(0,0,0,0.15); z-index: 10; overflow-y: auto; }
+    .brand-header { padding: 16px 18px; background: rgba(0, 0, 0, 0.25); border-bottom: 4px solid var(--light-green); display: flex; align-items: center; gap: 10px; }
+    .brand-header i { font-size: 22px; color: var(--light-green); }
+    .brand-header h2 { font-size: 16px; font-weight: 800; letter-spacing: 0.5px; }
+
+    .nav-menu { padding: 12px 8px; display: flex; flex-direction: column; gap: 4px; }
+    .menu-group { display: flex; flex-direction: column; }
+    .menu-header { padding: 9px 12px; color: #FFFFFF; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: space-between; border-radius: 6px; cursor: pointer; transition: all 0.2s; }
+    .menu-header:hover { background: rgba(255, 255, 255, 0.1); }
+    .menu-header-title { display: flex; align-items: center; gap: 8px; }
+    .arrow-icon { font-size: 10px; transition: transform 0.2s; }
+
+    .tree-sub { display: none; flex-direction: column; padding-left: 20px; gap: 2px; margin-top: 2px; }
+    .menu-group.open .tree-sub { display: flex; }
+    .menu-group.open .arrow-icon { transform: rotate(90deg); }
+
+    .tree-item { padding: 6px 10px; color: #94A3B8; font-size: 11px; font-weight: 600; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+    .tree-item::before { content: '├─'; color: #475569; font-family: monospace; }
+    .tree-item:last-child::before { content: '└─'; }
+    .tree-item:hover, .tree-item.active { color: #FFFFFF; background: rgba(255, 255, 255, 0.12); }
+    .tree-item.active { color: var(--light-green); font-weight: 700; }
+
+    .main-wrapper { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+    .top-bar { background: var(--card-bg); padding: 10px 24px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; gap: 20px; }
+    .global-search { display: flex; align-items: center; background: #F1F5F9; border: 1px solid var(--border-color); border-radius: 6px; padding: 7px 14px; width: 420px; gap: 10px; }
+    .global-search input { border: none; background: transparent; outline: none; font-size: 12px; width: 100%; }
+
+    .top-right { display: flex; align-items: center; gap: 18px; }
+    .bell-icon { position: relative; cursor: pointer; font-size: 16px; color: var(--text-dark); }
+    .bell-badge { position: absolute; top: -6px; right: -8px; background: var(--danger-red); color: white; font-size: 9px; font-weight: 800; border-radius: 50%; padding: 2px 5px; }
+
+    .header-section { background: #FFFFFF; padding: 12px 24px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; }
+    .breadcrumbs { font-size: 11px; color: var(--text-muted); font-weight: 600; display: flex; align-items: center; gap: 6px; }
+    .breadcrumbs span.active { color: var(--primary-blue); font-weight: 700; }
+    .breadcrumbs span.link { cursor: pointer; }
+    .breadcrumbs span.link:hover { color: var(--primary-blue); text-decoration: underline; }
+
+    .action-toolbar { display: flex; gap: 8px; }
+    .btn { padding: 7px 12px; border-radius: 5px; font-size: 11px; font-weight: 700; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s; }
+    .btn:active { transform: scale(0.96); }
+    .btn-primary { background: var(--primary-blue); color: white; }
+    .btn-success { background: var(--success-green); color: white; }
+    .btn-purple { background: var(--purple-accent); color: white; }
+    .btn-outline { background: #F8FAFC; border: 1px solid var(--border-color); color: var(--text-dark); }
+    .btn-outline:hover { background: #E2E8F0; }
+    .btn-danger { background: var(--danger-red); color: white; }
+    .btn-danger:hover { background: #B91C1C; }
+
+    .content-body { flex: 1; padding: 16px 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
+
+    .metrics-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
+    .metric-card { background: var(--card-bg); border-radius: 6px; padding: 12px; border: 1px solid var(--border-color); display: flex; flex-direction: column; justify-content: space-between; gap: 4px; transition: transform .15s ease; }
+    .metric-card:hover { transform: translateY(-2px); }
+    .metric-card label { font-size: 9px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
+    .metric-card h3 { font-size: 16px; font-weight: 800; color: var(--primary-blue); }
+
+    .dashboard-grid { display: grid; grid-template-columns: 1fr 340px; gap: 16px; }
+    .panel-card { background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border-color); display: flex; flex-direction: column; overflow: hidden; }
+    .panel-header { padding: 10px 14px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: #F8FAFC; }
+    .panel-header h3 { font-size: 12px; font-weight: 700; color: var(--primary-blue); display: flex; align-items: center; gap: 6px; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 11px; }
+    thead th { background: var(--primary-blue); color: white; text-align: left; padding: 8px 10px; font-weight: 600; }
+    tbody td { padding: 8px 10px; border-bottom: 1px solid var(--border-color); vertical-align: middle; }
+    tbody tr:hover { background-color: #F1F5F9; }
+    tbody tr.removing { animation: fadeOut .2s ease forwards; }
+    @keyframes fadeOut { to { opacity: 0; } }
+
+    .badge-success { background: #DCFCE7; color: var(--success-green); padding: 2px 6px; border-radius: 10px; font-weight: 700; }
+    .badge-warning { background: #FEF3C7; color: var(--warning-orange); padding: 2px 6px; border-radius: 10px; font-weight: 700; }
+    .badge-danger { background: #FEE2E2; color: var(--danger-red); padding: 2px 6px; border-radius: 10px; font-weight: 700; }
+    .badge-info { background: #DBEAFE; color: #1D4ED8; padding: 2px 6px; border-radius: 10px; font-weight: 700; }
+
+    .row-actions { display: flex; gap: 4px; }
+    .btn-icon { width: 24px; height: 24px; border-radius: 4px; border: 1px solid var(--border-color); background: white; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 10px; color: var(--text-dark); transition: background .15s ease; }
+    .btn-icon:hover { background: #E2E8F0; }
+
+    .timeline { padding: 12px 14px; display: flex; flex-direction: column; gap: 12px; }
+    .timeline-item { display: flex; gap: 10px; font-size: 11px; border-bottom: 1px solid #F1F5F9; padding-bottom: 8px; }
+    .time-badge { font-weight: 800; color: var(--primary-blue); width: 45px; flex-shrink: 0; }
+
+    /* MODAL */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(15,26,43,.55); display: none; align-items: center; justify-content: center; z-index: 500; }
+    .modal-overlay.show { display: flex; }
+    .modal-box { background: var(--card-bg); width: 380px; border-radius: 8px; padding: 18px; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 20px 50px rgba(0,0,0,.3); animation: modalPop .18s ease; max-height: 90vh; overflow-y: auto; }
+    .modal-box.wide { width: 700px; }
+    @keyframes modalPop { from { transform: scale(.94); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .modal-box h3 { color: var(--primary-blue); font-size: 13px; }
+    .modal-box label { font-size: 10px; font-weight: 700; color: var(--text-muted); }
+    .modal-box input, .modal-box select, .modal-box textarea { padding: 6px 8px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 11px; width: 100%; font-family: inherit; }
+    .modal-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
+
+    /* DISPATCH LINE ITEMS */
+    .lines-table { width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 4px; }
+    .lines-table th { background: #F1F5F9; color: var(--text-dark); text-align: left; padding: 6px 8px; font-weight: 700; border-bottom: 2px solid var(--border-color); }
+    .lines-table td { padding: 5px 6px; border-bottom: 1px solid #F1F5F9; }
+    .lines-table input, .lines-table select { width: 100%; padding: 5px 6px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 11px; }
+    .lines-table .stock-hint { font-size: 9px; color: var(--text-muted); white-space: nowrap; }
+    .remove-line-btn { width: 22px; height: 22px; border-radius: 4px; border: 1px solid var(--border-color); background: #FEF2F2; color: var(--danger-red); cursor: pointer; font-size: 10px; }
+    .remove-line-btn:hover { background: #FEE2E2; }
+    .add-line-btn { align-self: flex-start; padding: 6px 10px; font-size: 10px; font-weight: 700; border-radius: 5px; border: 1px dashed var(--border-color); background: #F8FAFC; color: var(--primary-blue); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+    .add-line-btn:hover { background: #E2E8F0; }
+    .total-qty-row { display: flex; justify-content: flex-end; align-items: center; gap: 10px; padding: 8px 4px; border-top: 2px solid var(--border-color); margin-top: 4px; }
+    .total-qty-row .label { font-size: 11px; font-weight: 700; color: var(--text-muted); }
+    .total-qty-row .value { font-size: 16px; font-weight: 800; color: var(--warning-orange); }
+
+    .view-lines-table td, .view-lines-table th { padding: 6px 8px; }
+
+    .toast-stack { position: fixed; bottom: 18px; right: 18px; display: flex; flex-direction: column; gap: 8px; z-index: 999; }
+    .toast { background: var(--primary-blue); color: white; padding: 10px 16px; border-radius: 6px; font-size: 11px; font-weight: 700; box-shadow: 0 8px 20px rgba(0,0,0,.25); display: flex; align-items: center; gap: 8px; animation: toastIn .25s ease; }
+    .toast.success { background: var(--success-green); }
+    .toast.danger { background: var(--danger-red); }
+    @keyframes toastIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .toast.leaving { animation: toastOut .25s ease forwards; }
+    @keyframes toastOut { to { opacity: 0; transform: translateX(20px); } }
+  </style>
+  <script src="airtouch_store.js"></script>
+</head>
+<body>
+
+  <aside class="sidebar">
+    <div class="brand-header">
+      <i class="fa-solid fa-wifi"></i>
+      <h2>AIR TOUCH ERP</h2>
+    </div>
+
+    <nav class="nav-menu">
+      <div class="menu-group">
+        <div class="menu-header" onclick="location.href='dashboard.html'">
+          <div class="menu-header-title"><i class="fa-solid fa-house"></i> 🏠 Dashboard</div>
+        </div>
+      </div>
+
+      <div class="menu-group open">
+        <div class="menu-header" onclick="toggleMenu(this)">
+          <div class="menu-header-title"><i class="fa-solid fa-boxes-stacked"></i> 📦 Inventory</div>
+          <i class="fa-solid fa-chevron-right arrow-icon"></i>
+        </div>
+        <div class="tree-sub">
+          <div class="tree-item" onclick="location.href='store_inventory.html'">Store Stock</div>
+          <div class="tree-item" onclick="location.href='purchase.html'">Purchase</div>
+          <div class="tree-item active">Dispatch</div>
+          <div class="tree-item" onclick="location.href='ledger.html'">Ledger</div>
+        </div>
+      </div>
+
+      <div class="menu-group">
+        <div class="menu-header" onclick="toggleMenu(this)">
+          <div class="menu-header-title"><i class="fa-solid fa-wrench"></i> 🔧 Installation</div>
+          <i class="fa-solid fa-chevron-right arrow-icon"></i>
+        </div>
+        <div class="tree-sub">
+          <div class="tree-item" onclick="location.href='installation.html'">New Installation</div>
+          <div class="tree-item" onclick="location.href='installation.html'">Installation List</div>
+          <div class="tree-item" onclick="location.href='installation.html'">Returned Material</div>
+          <div class="tree-item" onclick="location.href='installation_exchange.html'">Installation Exchange</div>
+        </div>
+      </div>
+
+      <div class="menu-group">
+        <div class="menu-header" onclick="toggleMenu(this)">
+          <div class="menu-header-title"><i class="fa-solid fa-chart-pie"></i> 📊 Reports</div>
+          <i class="fa-solid fa-chevron-right arrow-icon"></i>
+        </div>
+        <div class="tree-sub">
+          <div class="tree-item">Daily Summary</div>
+          <div class="tree-item">Monthly Report</div>
+          <div class="tree-item">City Wise Stock</div>
+        </div>
+      </div>
+
+      <div class="menu-group">
+        <div class="menu-header" onclick="location.href='employees.html'"><div class="menu-header-title"><i class="fa-solid fa-users"></i> 👨 Employees</div></div>
+      </div>
+
+      <div class="menu-group">
+        <div class="menu-header" onclick="location.href='settings.html'"><div class="menu-header-title"><i class="fa-solid fa-gear"></i> ⚙ Settings</div></div>
+      </div>
+    </nav>
+  </aside>
+
+  <main class="main-wrapper">
+
+    <header class="top-bar">
+      <div class="global-search">
+        <i class="fa-solid fa-magnifying-glass" style="color:var(--text-muted);"></i>
+        <input type="text" id="searchInput" placeholder="🔍 Search City / Employee / Item...">
+      </div>
+
+      <div class="top-right">
+        <div class="bell-icon" title="Notifications" id="bellBtn">
+          <i class="fa-solid fa-bell"></i>
+          <span class="bell-badge" id="bellBadge">1</span>
+        </div>
+        <div style="font-size:11px; font-weight:700; color:var(--primary-blue);">
+          <i class="fa-solid fa-user-circle"></i> Admin Profile
+        </div>
+      </div>
+    </header>
+
+    <section class="header-section">
+      <div class="breadcrumbs">
+        <span class="link" onclick="location.href='dashboard.html'">Dashboard</span> &gt;
+        <span class="link" onclick="location.href='store_inventory.html'">Inventory</span> &gt;
+        <span class="active">Dispatch</span>
+      </div>
+
+      <div class="action-toolbar">
+        <button class="btn btn-purple" id="newDispatchBtn"><i class="fa-solid fa-plus"></i> ➕ New Dispatch</button>
+        <button class="btn btn-outline" id="importBtn"><i class="fa-solid fa-file-import"></i> 📥 Import Excel</button>
+        <input type="file" id="importFileInput" accept=".xlsx,.xls,.csv" style="display:none;">
+        <button class="btn btn-outline" id="exportBtn"><i class="fa-solid fa-file-export"></i> 📤 Export Excel</button>
+        <button class="btn btn-outline" id="printBtn"><i class="fa-solid fa-print"></i> 🖨 Print</button>
+        <button class="btn btn-outline" id="refreshBtn"><i class="fa-solid fa-rotate"></i> 🔄 Refresh</button>
+        <button class="btn btn-danger" id="clearDataBtn"><i class="fa-solid fa-trash-can"></i> 🗑 Clear Data</button>
+      </div>
+    </section>
+
+    <div class="content-body">
+
+      <section class="metrics-grid" id="metricsGrid">
+        <div class="metric-card"><label>🚚 Total Dispatches</label><h3 id="mTotalDispatches">0</h3></div>
+        <div class="metric-card"><label>📦 Total Qty Sent</label><h3 style="color:var(--warning-orange);" id="mTotalQty">0</h3></div>
+        <div class="metric-card"><label>📅 This Month</label><h3 id="mMonthQty">0</h3></div>
+        <div class="metric-card"><label>🏙️ Cities Served</label><h3 id="mCities">0</h3></div>
+        <div class="metric-card"><label>👨 Employees Involved</label><h3 id="mEmployees">0</h3></div>
+        <div class="metric-card"><label>⚠️ Items Low After Dispatch</label><h3 style="color:var(--danger-red);" id="mLowAfter">0</h3></div>
+      </section>
+
+      <div class="dashboard-grid">
+
+        <section class="panel-card">
+          <div class="panel-header">
+            <h3><i class="fa-solid fa-truck-fast"></i> Dispatch Records</h3>
+            <span style="font-size:10px; color:var(--text-muted);">Every save deducts stock via the ledger</span>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Ref #</th>
+                <th>City</th>
+                <th>Employee</th>
+                <th>Item</th>
+                <th>Qty</th>
+                <th>Date</th>
+                <th>Remarks</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="dispatchesBody"></tbody>
+          </table>
+        </section>
+
+        <section class="panel-card">
+          <div class="panel-header">
+            <h3><i class="fa-solid fa-clock"></i> Recent Dispatch Activity</h3>
+          </div>
+
+          <div class="timeline" id="timelineList"></div>
+        </section>
+
+      </div>
+
+    </div>
+  </main>
+
+  <!-- NEW DISPATCH MODAL -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal-box wide">
+      <h3 id="modalTitle"><i class="fa-solid fa-truck-fast"></i> New Dispatch</h3>
+
+      <div class="modal-row">
+        <div>
+          <label>City</label>
+          <select id="mCity"></select>
+        </div>
+        <div>
+          <label>Employee</label>
+          <select id="mEmployee"></select>
+        </div>
+        <div>
+          <label>Dispatch Date</label>
+          <input type="date" id="mDate">
+        </div>
+      </div>
+
+      <label>Remarks</label>
+      <input type="text" id="mRemarks" placeholder="e.g. Field kit for new installs">
+
+      <label style="margin-top:6px;">Items</label>
+      <table class="lines-table" id="linesTable">
+        <thead>
+          <tr>
+            <th style="width:46%;">Item</th>
+            <th style="width:20%;">Qty</th>
+            <th style="width:26%;">In Stock</th>
+            <th style="width:8%;"></th>
+          </tr>
+        </thead>
+        <tbody id="linesBody"></tbody>
+      </table>
+      <button class="add-line-btn" id="addLineBtn"><i class="fa-solid fa-plus"></i> Add Item Line</button>
+
+      <div class="total-qty-row">
+        <span class="label">Total Qty Dispatched</span>
+        <span class="value" id="totalQtyDisplay">0</span>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn btn-outline" id="modalCancelBtn">Cancel</button>
+        <button class="btn btn-purple" id="modalSaveBtn"><i class="fa-solid fa-check"></i> <span id="modalSaveBtnText">Save Dispatch</span></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- VIEW DISPATCH MODAL -->
+  <div class="modal-overlay" id="viewOverlay">
+    <div class="modal-box wide">
+      <h3><i class="fa-solid fa-eye"></i> Dispatch Detail — <span id="viewRef"></span></h3>
+      <div class="modal-row" style="grid-template-columns: 1fr 1fr 1fr;">
+        <div><label>City</label><div id="viewCity" style="font-size:12px; font-weight:700; margin-top:4px;"></div></div>
+        <div><label>Employee</label><div id="viewEmployee" style="font-size:12px; font-weight:700; margin-top:4px;"></div></div>
+        <div><label>Date</label><div id="viewDate" style="font-size:12px; font-weight:700; margin-top:4px;"></div></div>
+      </div>
+      <label>Remarks</label>
+      <div id="viewRemarks" style="font-size:12px; margin-top:2px;"></div>
+
+      <table class="lines-table view-lines-table">
+        <thead><tr><th>Item Code</th><th>Item Name</th><th>Qty</th></tr></thead>
+        <tbody id="viewLinesBody"></tbody>
+      </table>
+
+      <div class="total-qty-row">
+        <span class="label">Total Qty</span>
+        <span class="value" id="viewTotalQty">0</span>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn btn-outline" id="viewCloseBtn">Close</button>
+        <button class="btn btn-purple" id="viewPrintBtn"><i class="fa-solid fa-print"></i> Print</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-stack" id="toastStack"></div>
+
+  <script>
+    function toggleMenu(element) {
+      element.parentElement.classList.toggle('open');
+    }
+
+    /* ---------------- MOCK MASTER DATA (mirrors cities + employees + items tables) ---------------- */
+    const cities = [
+      { code: 'BTK', name: 'Barkhela' },
+      { code: 'DHR', name: 'Dehri Julagram' },
+      { code: 'TOK', name: 'Totakan' },
+      { code: 'BDN', name: 'Badwan' },
+      { code: 'CKD', name: 'Chakdara' },
+      { code: 'OCH', name: 'Owoch' },
+      { code: 'SKT', name: 'Shawa Kityarai' },
+      { code: 'THA', name: 'Thana' },
+      { code: 'ALD', name: 'Aladand' },
+      { code: 'TLS', name: 'Talalash' },
+      { code: 'MTA', name: 'Matta' },
+      { code: 'SWT', name: 'Swat' },
+      { code: 'TMG', name: 'Tamargara' },
+      { code: 'KKL', name: 'Khwaza Khela' },
+      { code: 'CHARBAGH', name: 'Charbagh' },
+      { code: 'KOT', name: 'Kota' },
+      { code: 'SHM', name: 'Shamozai' },
+      { code: 'GHL', name: 'Ghaligy' },
+    ];
+    // Mirrors employees.html — includes each field technician's assigned
+    // city, so Dispatch can auto-pick the right employee once a city is chosen.
+    const employees = [
+      { id: 1, code: 'EMP-001', name: 'Bilal Ahmed', dept: 'Admin', city: '' },
+      { id: 2, code: 'EMP-002', name: 'Ali Raza', dept: 'Technical', city: '' },
+      { id: 3, code: 'EMP-003', name: 'Asad Khan', dept: 'Store', city: '' },
+      { id: 4, code: 'EMP-004', name: 'Hamza Akhter', dept: 'Technical', city: 'BTK' },
+      { id: 5, code: 'EMP-005', name: 'Jawad Khan', dept: 'Technical', city: 'TOK' },
+      { id: 6, code: 'EMP-006', name: 'Bilal Khan', dept: 'Technical', city: 'DHR' },
+      { id: 7, code: 'EMP-007', name: 'Zain ZK', dept: 'Technical', city: 'CKD' },
+      { id: 8, code: 'EMP-008', name: 'Adnan', dept: 'Technical', city: 'OCH' },
+      { id: 9, code: 'EMP-009', name: 'Arshad Khan', dept: 'Technical', city: 'SKT' },
+      { id: 10, code: 'EMP-010', name: 'Attaullah Khan', dept: 'Technical', city: 'TMG' },
+      { id: 11, code: 'EMP-011', name: 'Yaseen Khan', dept: 'Technical', city: 'KKL' },
+      { id: 12, code: 'EMP-012', name: 'Ezhar', dept: 'Technical', city: 'MTA' },
+      { id: 13, code: 'EMP-013', name: 'Shayan', dept: 'Technical', city: 'KOT' },
+      { id: 14, code: 'EMP-014', name: 'Ubaid Khan', dept: 'Technical', city: 'SHM' },
+      { id: 15, code: 'EMP-015', name: 'Shehzad Khan', dept: 'Technical', city: 'SWT' },
+      { id: 16, code: 'EMP-016', name: 'Fazal Wadood', dept: 'Technical', city: 'THA' },
+      { id: 17, code: 'EMP-017', name: 'Muhammad Noman', dept: 'Technical', city: 'ALD' },
+      { id: 18, code: 'EMP-018', name: 'Muhammad Bilal', dept: 'Technical', city: 'BDN' },
+    ];
+
+    // ---------------- SHARED CENTRAL STORE (single source of truth) ----------------
+    // Items and dispatch records now come live from AirTouchStore (airtouch_store.js),
+    // the SAME store store_inventory.html and purchase.html read/write. So every
+    // dispatch entered here deducts real stock, and only items that actually exist
+    // in the store show up in the item dropdown below.
+    function items() { return AirTouchStore.getItems(); }
+    function dispatches() { return AirTouchStore.getDispatches(); }
+
+    function toISODate(value){
+      if (!value) return new Date().toISOString().slice(0,10);
+      if (value instanceof Date && !isNaN(value)) return value.toISOString().slice(0,10);
+      const parsed = new Date(value);
+      return isNaN(parsed) ? new Date().toISOString().slice(0,10) : parsed.toISOString().slice(0,10);
+    }
+    function cityName(code){ const c = cities.find(c => c.code === code); return c ? c.name : code; }
+    function employeeName(id){ const e = employees.find(e => e.id === id); return e ? e.name : 'Unknown'; }
+    function itemById(id){ return items().find(i => i.id == id); }
+    function employeeForCity(cityCode){ return employees.find(e => e.city === cityCode); }
+
+    function batchesGrouped(){
+      const map = new Map();
+      dispatches().forEach(d => {
+        if (!map.has(d.batchRef)) map.set(d.batchRef, []);
+        map.get(d.batchRef).push(d);
+      });
+      return [...map.entries()].map(([batchRef, rows]) => ({
+        batchRef,
+        city: rows[0].city,
+        employee_id: rows[0].employee,
+        date: rows[0].date,
+        remarks: rows[0].remarks,
+        lines: rows,
+        totalQty: rows.reduce((s,r) => s + r.qty, 0),
+      }));
+    }
+
+    /* ---------------- RENDER: DISPATCH TABLE (grouped by trip, one row per item) ---------------- */
+    function renderDispatches(filter){
+      const body = document.getElementById('dispatchesBody');
+      const q = (filter || '').toLowerCase();
+
+      const rows = dispatches()
+        .filter(d => {
+          if (!q) return true;
+          const it = itemById(d.itemId);
+          return d.batchRef.toLowerCase().includes(q) ||
+                 cityName(d.city).toLowerCase().includes(q) ||
+                 employeeName(d.employee).toLowerCase().includes(q) ||
+                 (it && (it.code.toLowerCase().includes(q) || it.name.toLowerCase().includes(q)));
+        })
+        .sort((a,b) => String(b.id).localeCompare(String(a.id)));
+
+      body.innerHTML = rows.map(d => {
+        const it = itemById(d.itemId);
+        return `<tr data-id="${d.id}">
+          <td><code>${d.batchRef}</code></td>
+          <td><strong>${cityName(d.city)}</strong></td>
+          <td>${employeeName(d.employee)}</td>
+          <td>${it ? `${it.code} — ${it.name}` : d.itemId}</td>
+          <td><strong>${d.qty.toLocaleString()}</strong></td>
+          <td>${toISODate(d.date)}</td>
+          <td style="color:var(--text-muted);">${d.remarks || '—'}</td>
+          <td>
+            <div class="row-actions">
+              <button class="btn-icon" title="View Trip" data-action="view"><i class="fa-solid fa-eye"></i></button>
+              <button class="btn-icon" style="color:var(--primary-blue)" title="Edit Trip" data-action="edit"><i class="fa-solid fa-pen"></i></button>
+              <button class="btn-icon" style="color:var(--danger-red)" title="Reverse (return stock)" data-action="reverse"><i class="fa-solid fa-rotate-left"></i></button>
+            </div>
+          </td>
+        </tr>`;
+      }).join('') || `<tr><td colspan="8" style="text-align:center; color:var(--text-muted); padding:16px;">No dispatches match your search</td></tr>`;
+
+      body.querySelectorAll('button[data-action]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const id = btn.closest('tr').dataset.id;
+          const action = btn.dataset.action;
+          const row = dispatches().find(d => String(d.id) === id);
+          if (!row) return;
+          if (action === 'view') openViewModal(row.batchRef);
+          else if (action === 'edit') openEditDispatchModal(row.batchRef);
+          else if (action === 'reverse') reverseDispatchLine(row.id);
+        });
+      });
+
+      updateMetrics();
+    }
+
+    function updateMetrics(){
+      const batches = batchesGrouped();
+      const totalDispatches = batches.length;
+      const totalQty = dispatches().reduce((s,d) => s + d.qty, 0);
+      const now = new Date();
+      const monthQty = dispatches()
+        .filter(d => { const dt = new Date(d.date); return dt.getFullYear() === now.getFullYear() && dt.getMonth() === now.getMonth(); })
+        .reduce((s,d) => s + d.qty, 0);
+      const citiesServed = new Set(dispatches().map(d => d.city)).size;
+      const employeesInvolved = new Set(dispatches().map(d => d.employee)).size;
+      const lowAfter = items().filter(i => i.stock <= i.minStock).length;
+
+      document.getElementById('mTotalDispatches').textContent = totalDispatches;
+      document.getElementById('mTotalQty').textContent = totalQty.toLocaleString();
+      document.getElementById('mMonthQty').textContent = monthQty.toLocaleString();
+      document.getElementById('mCities').textContent = citiesServed;
+      document.getElementById('mEmployees').textContent = employeesInvolved;
+      document.getElementById('mLowAfter').textContent = lowAfter;
+    }
+
+    /* ---------------- RENDER: ACTIVITY TIMELINE ---------------- */
+    function renderTimeline(){
+      const list = document.getElementById('timelineList');
+      const batches = batchesGrouped().sort((a,b) => b.batchRef.localeCompare(a.batchRef)).slice(0, 6);
+      list.innerHTML = batches.map(b => `
+        <div class="timeline-item">
+          <span class="time-badge">${toISODate(b.date).slice(5)}</span>
+          <div>
+            <strong>Dispatch — ${b.batchRef}</strong>
+            <p style="color:var(--text-muted); font-size:10px;">-${b.totalQty} Pcs to ${cityName(b.city)} • ${employeeName(b.employee_id)}</p>
+          </div>
+        </div>
+      `).join('') || `<p style="padding:12px; color:var(--text-muted); font-size:11px;">No dispatches recorded yet</p>`;
+    }
+
+    /* ---------------- SEARCH ---------------- */
+    document.getElementById('searchInput').addEventListener('input', (e) => renderDispatches(e.target.value));
+
+    /* ---------------- NEW DISPATCH MODAL ---------------- */
+    const overlay = document.getElementById('modalOverlay');
+    let lineSeq = 0;
+
+    function nextBatchRef(){
+      const nums = dispatches().map(d => parseInt(d.batchRef.replace('DSP-', ''), 10)).filter(n => !isNaN(n));
+      const next = (nums.length ? Math.max(...nums) : 1000) + 1;
+      return `DSP-${next}`;
+    }
+
+    function itemOptionsHtml(selectedId){
+      return items().map(i => `<option value="${i.id}" ${i.id === selectedId ? 'selected' : ''}>${i.code} — ${i.name}</option>`).join('');
+    }
+
+    function addLineRow(prefill){
+      const id = ++lineSeq;
+      const body = document.getElementById('linesBody');
+      const tr = document.createElement('tr');
+      tr.dataset.lineId = id;
+      const defaultItem = prefill ? itemById(prefill.item_id) : items()[0];
+      const qty = prefill ? prefill.qty : 1;
+      tr.innerHTML = `
+        <td><select class="line-item">${itemOptionsHtml(defaultItem ? defaultItem.id : null)}</select></td>
+        <td><input type="number" class="line-qty" min="1" value="${qty}"></td>
+        <td class="stock-hint">${defaultItem ? defaultItem.stock.toLocaleString() + ' Pcs available' : ''}</td>
+        <td><button class="remove-line-btn" title="Remove"><i class="fa-solid fa-xmark"></i></button></td>
+      `;
+      body.appendChild(tr);
+
+      const refreshHint = () => {
+        const it = itemById(Number(tr.querySelector('.line-item').value));
+        tr.querySelector('.stock-hint').textContent = it ? `${it.stock.toLocaleString()} Pcs available` : '';
+        updateTotalQtyDisplay();
+      };
+      tr.querySelector('.line-item').addEventListener('change', refreshHint);
+      tr.querySelector('.line-qty').addEventListener('input', updateTotalQtyDisplay);
+      tr.querySelector('.remove-line-btn').addEventListener('click', () => {
+        if (document.querySelectorAll('#linesBody tr').length <= 1){ showToast('A dispatch needs at least one item line', 'danger'); return; }
+        tr.remove();
+        updateTotalQtyDisplay();
+      });
+    }
+
+    function updateTotalQtyDisplay(){
+      let total = 0;
+      document.querySelectorAll('#linesBody tr').forEach(tr => { total += Number(tr.querySelector('.line-qty').value) || 0; });
+      document.getElementById('totalQtyDisplay').textContent = total.toLocaleString();
+    }
+
+    // null = creating a new dispatch; set to a batchRef when the Edit (✏️) button opens the modal
+    let editingBatchRef = null;
+
+    // Whenever the City field changes, jump the Employee field straight to
+    // that city's assigned field technician (if one exists in employees[]).
+    function autoSelectEmployeeForCity(){
+      const cityCode = document.getElementById('mCity').value;
+      const match = employeeForCity(cityCode);
+      if (match) document.getElementById('mEmployee').value = match.id;
+    }
+
+    function openNewDispatchModal(){
+      editingBatchRef = null;
+      document.getElementById('modalTitle').innerHTML = '<i class="fa-solid fa-truck-fast"></i> New Dispatch';
+      document.getElementById('modalSaveBtnText').textContent = 'Save Dispatch';
+      document.getElementById('mCity').innerHTML = cities.map(c => `<option value="${c.code}" title="${c.name}">${c.code}</option>`).join('');
+      document.getElementById('mEmployee').innerHTML = employees.map(e => `<option value="${e.id}">${e.name} — ${e.dept}</option>`).join('');
+      document.getElementById('mCity').onchange = autoSelectEmployeeForCity;
+      autoSelectEmployeeForCity(); // pre-select technician for the default (first) city
+      document.getElementById('mDate').value = toISODate(new Date());
+      document.getElementById('mRemarks').value = '';
+      document.getElementById('linesBody').innerHTML = '';
+      lineSeq = 0;
+      addLineRow(null);
+      updateTotalQtyDisplay();
+      overlay.classList.add('show');
+    }
+
+    // Opens the same small modal window, pre-filled with the trip's existing
+    // city/employee/date/remarks/lines so the user can edit them in place.
+    function openEditDispatchModal(batchRef){
+      const b = batchesGrouped().find(b => b.batchRef === batchRef);
+      if (!b) return;
+
+      editingBatchRef = batchRef;
+      document.getElementById('modalTitle').innerHTML = `<i class="fa-solid fa-pen"></i> Edit Dispatch — ${b.batchRef}`;
+      document.getElementById('modalSaveBtnText').textContent = 'Update Dispatch';
+
+      document.getElementById('mCity').innerHTML = cities.map(c => `<option value="${c.code}" title="${c.name}" ${c.code === b.city ? 'selected' : ''}>${c.code}</option>`).join('');
+      document.getElementById('mEmployee').innerHTML = employees.map(e => `<option value="${e.id}" ${e.id === b.employee_id ? 'selected' : ''}>${e.name} — ${e.dept}</option>`).join('');
+      document.getElementById('mCity').onchange = autoSelectEmployeeForCity; // only fires if the user changes the city while editing
+      document.getElementById('mDate').value = toISODate(b.date);
+      document.getElementById('mRemarks').value = b.remarks || '';
+
+      document.getElementById('linesBody').innerHTML = '';
+      lineSeq = 0;
+      b.lines.forEach(l => addLineRow({ item_id: l.itemId, qty: l.qty }));
+      updateTotalQtyDisplay();
+
+      overlay.classList.add('show');
+    }
+
+    document.getElementById('newDispatchBtn').onclick = openNewDispatchModal;
+    document.getElementById('addLineBtn').onclick = () => addLineRow(null);
+    function closeDispatchModal(){
+      overlay.classList.remove('show');
+      editingBatchRef = null;
+    }
+    document.getElementById('modalCancelBtn').onclick = closeDispatchModal;
+    overlay.addEventListener('click', e => { if (e.target === overlay) closeDispatchModal(); });
+
+    document.getElementById('modalSaveBtn').onclick = () => {
+      const city = document.getElementById('mCity').value;
+      const employeeId = Number(document.getElementById('mEmployee').value);
+      const date = document.getElementById('mDate').value || toISODate(new Date());
+      const remarks = document.getElementById('mRemarks').value.trim();
+
+      const rawLines = [];
+      document.querySelectorAll('#linesBody tr').forEach(tr => {
+        const itemId = Number(tr.querySelector('.line-item').value);
+        const qty = Number(tr.querySelector('.line-qty').value);
+        rawLines.push({ itemId, qty });
+      });
+
+      if (rawLines.some(l => !l.itemId || !l.qty || l.qty <= 0)){
+        showToast('Every line needs a valid item and a qty greater than zero', 'danger');
+        return;
+      }
+
+      // Combine duplicate item lines in this trip before sending to the store.
+      const neededByItem = {};
+      rawLines.forEach(l => { neededByItem[l.itemId] = (neededByItem[l.itemId] || 0) + l.qty; });
+      const combinedLines = Object.entries(neededByItem).map(([itemId, qty]) => ({ itemId: Number(itemId), qty }));
+      const totalQty = combinedLines.reduce((s,l) => s + l.qty, 0);
+
+      // Every dispatch now goes through AirTouchStore, the same store
+      // Store Stock reads from — so stock is deducted for real and stays in
+      // sync across pages. It throws if any line exceeds available stock.
+      try {
+        let batchRef;
+        const wasEditing = !!editingBatchRef;
+        if (wasEditing){
+          batchRef = editingBatchRef;
+          AirTouchStore.updateDispatchBatch(batchRef, city, employeeId, date, combinedLines, remarks);
+        } else {
+          const records = AirTouchStore.recordDispatch(city, employeeId, date, combinedLines, remarks);
+          batchRef = records[0].batchRef;
+        }
+
+        editingBatchRef = null;
+        overlay.classList.remove('show');
+        renderDispatches(document.getElementById('searchInput').value);
+        renderTimeline();
+        showToast(wasEditing
+          ? `${batchRef} updated — ${totalQty} Pcs dispatched to ${cityName(city)}`
+          : `${batchRef} posted — ${totalQty} Pcs dispatched to ${cityName(city)}`, 'success');
+      } catch (err){
+        showToast(err.message || 'Dispatch failed — check stock levels', 'danger');
+      }
+    };
+
+    /* ---------------- VIEW DISPATCH MODAL ---------------- */
+    const viewOverlay = document.getElementById('viewOverlay');
+    function openViewModal(batchRef){
+      const batches = batchesGrouped();
+      const b = batches.find(b => b.batchRef === batchRef);
+      if (!b) return;
+      document.getElementById('viewRef').textContent = b.batchRef;
+      document.getElementById('viewCity').textContent = cityName(b.city);
+      document.getElementById('viewEmployee').textContent = employeeName(b.employee_id);
+      document.getElementById('viewDate').textContent = toISODate(b.date);
+      document.getElementById('viewRemarks').textContent = b.remarks || '—';
+      document.getElementById('viewLinesBody').innerHTML = b.lines.map(l => {
+        const it = itemById(l.itemId);
+        return `<tr><td><code>${it ? it.code : l.itemId}</code></td><td>${it ? it.name : 'Unknown Item'}</td><td>${l.qty}</td></tr>`;
+      }).join('');
+      document.getElementById('viewTotalQty').textContent = b.totalQty.toLocaleString();
+      viewOverlay.classList.add('show');
+    }
+    document.getElementById('viewCloseBtn').onclick = () => viewOverlay.classList.remove('show');
+    document.getElementById('viewPrintBtn').onclick = () => window.print();
+    viewOverlay.addEventListener('click', e => { if (e.target === viewOverlay) viewOverlay.classList.remove('show'); });
+
+    /* ---------------- REVERSE A SINGLE LINE ---------------- */
+    function reverseDispatchLine(id){
+      const d = dispatches().find(d => d.id === id);
+      if (!d) return;
+      const row = document.querySelector(`tr[data-id="${id}"]`);
+      if (row) row.classList.add('removing');
+      setTimeout(() => {
+        const it = itemById(d.itemId);
+        AirTouchStore.reverseDispatchLine(id);
+        renderDispatches(document.getElementById('searchInput').value);
+        renderTimeline();
+        showToast(`${d.batchRef}: ${it ? it.code : d.itemId} reversed — ${d.qty} Pcs returned to stock`, 'danger');
+      }, 200);
+    }
+
+    /* ---------------- TOOLBAR ---------------- */
+    document.getElementById('refreshBtn').onclick = () => { renderDispatches(''); document.getElementById('searchInput').value=''; showToast('Dispatches refreshed', 'success'); };
+
+    document.getElementById('clearDataBtn').onclick = () => {
+      if (!dispatches().length) { showToast('No dispatch records to clear', ''); return; }
+      if (!confirm('Clear all dispatch records? Stock sent out by these dispatches will be returned. This only clears this table in your browser and cannot be undone.')) return;
+      dispatches().slice().forEach(d => AirTouchStore.reverseDispatchLine(d.id));
+      renderDispatches('');
+      renderTimeline();
+      document.getElementById('searchInput').value = '';
+      showToast('Dispatch records cleared — stock returned', 'danger');
+    };
+    document.getElementById('printBtn').onclick = () => window.print();
+
+    /* ---------------- IMPORT (reads the same layout the Export button writes —
+       title/subtitle banner rows, header row, Ref#-grouped line rows, TOTAL row
+       — and posts each trip through the exact same flow as a manual "New
+       Dispatch" save, so stock, ledger, and everything downstream updates
+       automatically instead of just adding rows to this table. Note: a fresh
+       batch Ref # is always assigned by the store when posting — just like a
+       manual save — so the Ref # in the imported file is only used to group
+       that trip's item lines together, not reused as-is.) ---------------- */
+    const DISPATCH_IMPORT_HEADER_ALIASES = {
+      ref:      ['ref#', 'refnum', 'refnumber', 'ref', 'batchref'],
+      city:     ['city'],
+      employee: ['employee', 'employeename'],
+      code:     ['itemcode', 'code', 'sku', 'item'],
+      qty:      ['qty', 'quantity'],
+      date:     ['dispatchdate', 'date'],
+      remarks:  ['remarks', 'notes', 'remark'],
+    };
+    function normalizeDispatchImportHeader(h){ return String(h || '').toLowerCase().replace(/[\s_\-#]/g, ''); }
+    function buildDispatchImportFieldMap(headerRow){
+      const map = {};
+      headerRow.forEach((raw, idx) => {
+        const norm = normalizeDispatchImportHeader(raw);
+        for (const [field, aliases] of Object.entries(DISPATCH_IMPORT_HEADER_ALIASES)) {
+          if (aliases.includes(norm)) { map[idx] = field; break; }
+        }
+      });
+      return map;
+    }
+    function parseImportedDispatchDate(value){
+      if (value instanceof Date && !isNaN(value)) return toISODate(value);
+      if (typeof value === 'number') {
+        const parsed = XLSX.SSF.parse_date_code(value);
+        if (parsed) return toISODate(new Date(Date.UTC(parsed.y, parsed.m - 1, parsed.d)));
+      }
+      if (typeof value === 'string' && value.trim()) return toISODate(value.trim());
+      return toISODate(new Date());
+    }
+    // Finds the real header row even though Export puts a merged title + subtitle
+    // banner above it — scans for the row that actually contains recognizable
+    // column names instead of assuming row 0. "Ref #" is optional: a simpler
+    // sheet with just City, Employee, Item, Qty, Date (in any order/position)
+    // is also accepted — rows are then grouped by City+Employee+Date instead.
+    function findDispatchImportHeaderRowIndex(grid){
+      for (let r = 0; r < Math.min(grid.length, 10); r++) {
+        const map = buildDispatchImportFieldMap(grid[r]);
+        const vals = Object.values(map);
+        if (vals.includes('city') && vals.includes('employee') && vals.includes('code') && vals.includes('qty')) return r;
+      }
+      return -1;
+    }
+    // City/Employee columns hold display names in the export file, so match on
+    // name first; also accept a raw code (e.g. "BTK") in case someone hand-builds
+    // an import sheet with codes instead of names.
+    function resolveCityCode(raw){
+      const val = String(raw || '').trim();
+      if (!val) return null;
+      const byCode = cities.find(c => c.code.toLowerCase() === val.toLowerCase());
+      if (byCode) return byCode.code;
+      const byName = cities.find(c => c.name.toLowerCase() === val.toLowerCase());
+      return byName ? byName.code : null;
+    }
+    function resolveEmployeeId(raw){
+      const val = String(raw || '').trim();
+      if (!val) return null;
+      const byCode = employees.find(e => e.code.toLowerCase() === val.toLowerCase());
+      if (byCode) return byCode.id;
+      const byName = employees.find(e => e.name.toLowerCase() === val.toLowerCase());
+      return byName ? byName.id : null;
+    }
+
+    document.getElementById('importBtn').onclick = () => document.getElementById('importFileInput').click();
+
+    document.getElementById('importFileInput').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        try {
+          const workbook = XLSX.read(evt.target.result, { type: 'array', cellDates: true });
+          const sheet = workbook.Sheets[workbook.SheetNames[0]];
+          const grid = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true, defval: '' });
+          if (!grid.length) { showToast('That file has no rows to import', 'danger'); return; }
+
+          const headerRowIdx = findDispatchImportHeaderRowIndex(grid);
+          if (headerRowIdx === -1) {
+            showToast('Import failed: could not find City, Employee, Item, and Qty columns', 'danger');
+            return;
+          }
+          const fieldMap = buildDispatchImportFieldMap(grid[headerRowIdx]);
+          const hasRefColumn = Object.values(fieldMap).includes('ref');
+
+          // Group data rows by Ref # (if that column exists) so a trip's multiple
+          // item lines get posted together as one dispatch. When there's no Ref #
+          // column — e.g. a plain City / Employee / Item / Qty / Date sheet — rows
+          // that share the same City + Employee + Date are grouped together instead.
+          const refOrder = [];
+          const refGroups = {};
+          for (let r = headerRowIdx + 1; r < grid.length; r++) {
+            const row = grid[r];
+            if (!row || row.every(c => c === '' || c === null || c === undefined)) continue;
+
+            const rec = {};
+            Object.entries(fieldMap).forEach(([idx, field]) => { rec[field] = row[idx]; });
+
+            const code = String(rec.code || '').trim();
+            const qty = Number(rec.qty);
+            if (!code || !qty || qty <= 0) continue; // skip malformed/blank lines
+
+            const rowDate = parseImportedDispatchDate(rec.date);
+            let groupKey;
+            if (hasRefColumn) {
+              const ref = String(rec.ref || '').trim();
+              if (!ref || ref.toUpperCase() === 'TOTAL') continue; // skip the totals row
+              groupKey = ref;
+            } else {
+              const cityVal = String(rec.city || '').trim();
+              const empVal = String(rec.employee || '').trim();
+              if (!cityVal && !empVal) continue; // blank/summary row with no useful data
+              groupKey = `${cityVal.toLowerCase()}||${empVal.toLowerCase()}||${rowDate}`;
+            }
+
+            if (!refGroups[groupKey]) {
+              refGroups[groupKey] = {
+                ref: hasRefColumn ? groupKey : null,
+                city: rec.city, employee: rec.employee,
+                date: rowDate,
+                remarks: String(rec.remarks || '').trim(),
+                lines: [],
+              };
+              refOrder.push(groupKey);
+            }
+            refGroups[groupKey].lines.push({ code, qty });
+          }
+
+          if (!refOrder.length) { showToast('No valid dispatch rows found in that file', 'danger'); return; }
+
+          let postedTotalQty = 0, tripsPosted = 0, tripsSkippedNoCityEmployee = 0, tripsSkippedNoLines = 0, tripsSkippedStock = 0, linesSkippedUnknownItem = 0;
+
+          refOrder.forEach(groupKey => {
+            const grp = refGroups[groupKey];
+
+            const cityCode = resolveCityCode(grp.city);
+            const employeeId = resolveEmployeeId(grp.employee);
+            if (!cityCode || !employeeId) { tripsSkippedNoCityEmployee++; return; }
+
+            // Resolve each line's Item against real stock items — by code first,
+            // falling back to a name match (useful when the "Item" column holds a
+            // display name instead of the short code) — and combine duplicate
+            // items within the same trip, same as the manual save flow.
+            const neededByItem = {};
+            grp.lines.forEach(l => {
+              const item = items().find(i => i.code.toLowerCase() === l.code.toLowerCase())
+                        || items().find(i => i.name.toLowerCase() === l.code.toLowerCase());
+              if (!item) { linesSkippedUnknownItem++; return; }
+              neededByItem[item.id] = (neededByItem[item.id] || 0) + l.qty;
+            });
+            const combinedLines = Object.entries(neededByItem).map(([itemId, qty]) => ({ itemId: Number(itemId), qty }));
+            if (!combinedLines.length) { tripsSkippedNoLines++; return; }
+
+            // Post through AirTouchStore exactly like a manual save does — this is
+            // what actually deducts stock and writes the shared ledger entry, so
+            // the process runs all the way through instead of stopping at this table.
+            try {
+              AirTouchStore.recordDispatch(cityCode, employeeId, grp.date, combinedLines, grp.remarks);
+              tripsPosted++;
+              postedTotalQty += combinedLines.reduce((s, l) => s + l.qty, 0);
+            } catch (err) {
+              tripsSkippedStock++; // usually insufficient stock — recordDispatch throws in that case
+            }
+          });
+
+          renderDispatches(document.getElementById('searchInput').value);
+          renderTimeline();
+
+          const notes = [];
+          if (tripsSkippedNoCityEmployee) notes.push(`${tripsSkippedNoCityEmployee} skipped (city/employee not recognized)`);
+          if (tripsSkippedStock) notes.push(`${tripsSkippedStock} skipped (not enough stock)`);
+          if (tripsSkippedNoLines) notes.push(`${tripsSkippedNoLines} skipped (no matching items)`);
+          if (linesSkippedUnknownItem) notes.push(`${linesSkippedUnknownItem} line(s) skipped (item code not in Store Stock)`);
+
+          if (tripsPosted) {
+            showToast(`Import done — ${tripsPosted} dispatch(es) posted, ${postedTotalQty} Pcs deducted${notes.length ? ' • ' + notes.join(', ') : ''}`, 'success');
+          } else {
+            showToast(`Nothing imported${notes.length ? ' — ' + notes.join(', ') : ''}`, 'danger');
+          }
+        } catch (err) {
+          showToast('Import failed: file could not be read as Excel/CSV', 'danger');
+        } finally {
+          e.target.value = ''; // allow re-selecting the same file later
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    });
+
+    /* ---------------- EXPORT (styled .xlsx — branded banner, colored header, trip-grouped banding, totals) ---------------- */
+    document.getElementById('exportBtn').onclick = () => {
+      const COLS = 8; // Ref #, City, Employee, Item Code, Item Name, Qty, Dispatch Date, Remarks
+      const HEADERS = ['Ref #', 'City', 'Employee', 'Item Code', 'Item Name', 'Qty', 'Dispatch Date', 'Remarks'];
+
+      // Brand palette pulled from this page's own CSS variables, so the exported
+      // file visually matches the app instead of looking like a generic dump.
+      const NAVY = '146C2E', WHITE = 'FFFFFF', TEXT_DARK = '1E293B', BORDER = 'CBD5E1', BAND = 'F0F4F8';
+
+      const thinBorder = { style: 'thin', color: { rgb: BORDER } };
+      const borderAll = { top: thinBorder, bottom: thinBorder, left: thinBorder, right: thinBorder };
+
+      const titleStyle = { font: { name: 'Calibri', sz: 16, bold: true, color: { rgb: WHITE } }, fill: { fgColor: { rgb: NAVY } }, alignment: { horizontal: 'center', vertical: 'center' } };
+      const subtitleStyle = { font: { name: 'Calibri', sz: 10, italic: true, color: { rgb: '64748B' } }, alignment: { horizontal: 'center' } };
+      const headerStyle = { font: { name: 'Calibri', sz: 11, bold: true, color: { rgb: WHITE } }, fill: { fgColor: { rgb: NAVY } }, alignment: { horizontal: 'center', vertical: 'center' }, border: borderAll };
+      const totalStyle = { font: { name: 'Calibri', sz: 11, bold: true, color: { rgb: WHITE } }, fill: { fgColor: { rgb: NAVY } }, alignment: { horizontal: 'center', vertical: 'center' }, border: borderAll };
+
+      function rowStyle(bandFill, colIndex) {
+        const isNumericCol = colIndex === 5;
+        return {
+          font: { name: 'Calibri', sz: 10.5, color: { rgb: TEXT_DARK } },
+          fill: { fgColor: { rgb: bandFill ? BAND : WHITE } },
+          alignment: { horizontal: isNumericCol ? 'center' : (colIndex === 4 || colIndex === 7 ? 'left' : 'center'), vertical: 'center' },
+          border: borderAll,
+        };
+      }
+
+      const sorted = [...dispatches()].sort((a, b) => b.batchRef.localeCompare(a.batchRef));
+      const aoa = [];
+      aoa.push(['Air Touch Enterprise — Dispatch Report', '', '', '', '', '', '', '']);
+      aoa.push([`Generated on ${toISODate(new Date())}  •  ${sorted.length} line items`, '', '', '', '', '', '', '']);
+      aoa.push(HEADERS);
+      sorted.forEach(d => {
+        const it = itemById(d.itemId);
+        aoa.push([d.batchRef, cityName(d.city), employeeName(d.employee), it ? it.code : d.itemId, it ? it.name : '', d.qty, new Date(toISODate(d.date)), d.remarks || '']);
+      });
+      const totalQty = sorted.reduce((s, d) => s + (Number(d.qty) || 0), 0);
+      const totalsRowIndex = 3 + sorted.length;
+      aoa.push(['TOTAL', '', '', '', '', totalQty, '', '']);
+
+      const worksheet = XLSX.utils.aoa_to_sheet(aoa);
+      worksheet['!cols'] = [{wch:12},{wch:16},{wch:16},{wch:12},{wch:26},{wch:8},{wch:14},{wch:24}];
+      worksheet['!rows'] = [{hpt:26},{hpt:16}];
+      worksheet['!merges'] = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: COLS - 1 } },
+        { s: { r: 1, c: 0 }, e: { r: 1, c: COLS - 1 } },
+      ];
+      worksheet['!freeze'] = { xSplit: 0, ySplit: 3 };
+      worksheet['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 2, c: 0 }, e: { r: totalsRowIndex - 1, c: COLS - 1 } }) };
+
+      for (let c = 0; c < COLS; c++) {
+        const t = XLSX.utils.encode_cell({ r: 0, c });
+        if (worksheet[t]) worksheet[t].s = titleStyle;
+        const s = XLSX.utils.encode_cell({ r: 1, c });
+        if (worksheet[s]) worksheet[s].s = subtitleStyle;
+      }
+      for (let c = 0; c < COLS; c++) {
+        const ref = XLSX.utils.encode_cell({ r: 2, c });
+        if (worksheet[ref]) worksheet[ref].s = headerStyle;
+      }
+      let band = false, lastRef = null;
+      sorted.forEach((d, idx) => {
+        if (d.batchRef !== lastRef) { band = !band; lastRef = d.batchRef; }
+        const r = 3 + idx;
+        for (let c = 0; c < COLS; c++) {
+          const ref = XLSX.utils.encode_cell({ r, c });
+          if (!worksheet[ref]) continue;
+          worksheet[ref].s = rowStyle(band, c);
+          if (c === 6) worksheet[ref].z = 'yyyy-mm-dd';
+        }
+      });
+      for (let c = 0; c < COLS; c++) {
+        const ref = XLSX.utils.encode_cell({ r: totalsRowIndex, c });
+        if (!worksheet[ref]) continue;
+        worksheet[ref].s = totalStyle;
+      }
+
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Dispatches');
+      XLSX.writeFile(workbook, `dispatch_export_${toISODate(new Date())}.xlsx`);
+      showToast('Dispatches exported as a designed Excel (.xlsx)', 'success');
+    };
+
+    /* ---------------- NOTIFICATIONS ---------------- */
+    document.getElementById('bellBtn').onclick = () => {
+      document.getElementById('bellBadge').style.display = 'none';
+      showToast('1 low-stock item after recent dispatches', '');
+    };
+
+    /* ---------------- TOASTS ---------------- */
+    function showToast(msg, kind){
+      const stack = document.getElementById('toastStack');
+      const t = document.createElement('div');
+      t.className = `toast ${kind||''}`;
+      t.innerHTML = `<i class="fa-solid fa-circle-check"></i> ${msg}`;
+      stack.appendChild(t);
+      setTimeout(() => { t.classList.add('leaving'); setTimeout(() => t.remove(), 250); }, 2600);
+    }
+
+    /* ---------------- INIT ---------------- */
+    renderDispatches('');
+    renderTimeline();
+  </script>
+
+</body>
+</html>

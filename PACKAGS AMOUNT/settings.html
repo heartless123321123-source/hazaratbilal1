@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AIRTOUCH - Settings</title>
+  
+  <!-- Fonts, Icons & Chart.js Engine -->
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+  <script src="jspdf.umd.min.js"></script>
+  <script src="jspdf.plugin.autotable.min.js"></script>
+</head>
+
+<body>
+
+  <!-- Dynamic Rotator Background Container -->
+  <div id="bg-slider"></div>
+
+  <!-- ══ SIDEBAR NAVIGATION ══ -->
+  <div id="sidebar">
+    <div class="brand">
+      <div class="brand-logo">AIR<span class="at-g">TOUCH</span></div>
+      <div class="brand-sub">Billing Engine v2.5</div>
+    </div>
+
+    <nav>
+      <a class="nav-btn" id="btn-nav-dashboard" href="dashboard.html">
+        <span class="icon">🏠</span> Dashboard
+      </a>
+
+      <div class="nav-section nav-section-toggle" onclick="AppUI.toggleNavGroup('management', this)">
+        <span>Management</span> <span class="nav-toggle-arrow" id="nav-arrow-management">▾</span>
+      </div>
+<div class="nav-group" id="nav-group-management">
+      <a class="nav-btn" id="btn-nav-import" href="import.html">
+        <span class="icon">📥</span> Dual Data Import
+      </a>
+      <a class="nav-btn" id="btn-nav-verify" href="verify.html">
+        <span class="icon">🔍</span> FIFO Verification
+      </a>
+      <a class="nav-btn" id="btn-nav-pending" href="pending.html">
+        <span class="icon">⏳</span> Pending Bills
+      </a>
+      <a class="nav-btn" id="btn-nav-nopayment" href="billing-not-in-sale.html">
+        <span class="icon">🟠</span> Billing Not In Sale
+      </a>
+      <a class="nav-btn" id="btn-nav-clear-billing" href="clear-billing.html">
+        <span class="icon">✅</span> Clear Billing
+      </a>
+      <a class="nav-btn" id="btn-nav-mismatch-less" href="mismatch-less.html">
+        <span class="icon">🔴</span> Mismatch — Less
+      </a>
+      <a class="nav-btn" id="btn-nav-mismatch-extra" href="mismatch-extra.html">
+        <span class="icon">🟣</span> Mismatch — Extra
+      </a>
+      <a class="nav-btn" id="btn-nav-duplicates" href="duplicates.html">
+        <span class="icon">🔁</span> Duplicate Recharges
+      </a>
+      <a class="nav-btn" id="btn-nav-grid" href="ledger.html">
+        <span class="icon">📋</span> Master Ledger
+      </a>
+      <a class="nav-btn" id="btn-nav-editBilling" href="edit-billing.html">
+        <span class="icon">✏️</span> Edit Billing
+      </a>
+      <a class="nav-btn" id="btn-nav-free-users" href="free-users.html">
+        <span class="icon">🆓</span> Free Users
+      </a>
+      </div>
+
+      <div class="nav-section">Analytics</div>
+      <a class="nav-btn" id="btn-nav-analytics" href="analytics.html">
+        <span class="icon">📈</span> Analytics & Insights
+      </a>
+      <a class="nav-btn" id="btn-nav-search" href="#" onclick="AppUI.openGlobalSearch(); return false;">
+        <span class="icon">🔎</span> Global Search
+      </a>
+
+      <div class="nav-section">System</div>
+      <a class="nav-btn active" id="btn-nav-settings" href="settings.html">
+        <span class="icon">⚙️</span> Settings
+      </a>
+    </nav>
+  </div>
+
+  <!-- ══ MAIN CONTENT AREA ══ -->
+  <div id="main">
+
+    <!-- TOP HEADER -->
+    <div class="header-bar">
+      <button class="btn btn-blue" id="sidebar-toggle" onclick="document.getElementById('sidebar').classList.toggle('active')" style="display:none;">☰ Menu</button>
+
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" placeholder="Quick Search User ID, Name, Phone, CNIC..." oninput="AppUI.quickSearch(this.value)">
+      </div>
+
+      <div class="header-actions">
+        <button class="btn" style="background:var(--surface); backdrop-filter: var(--backdrop-blur); border: 1.5px solid var(--border);" onclick="AppUI.toggleTheme()">🌙 Theme Switch</button>
+        <button class="btn btn-blue" onclick="AppUI.runSync()">🔄 Run Sync</button>
+      </div>
+    </div>
+
+    <!-- SMART NOTIFICATIONS BAR -->
+    <div class="alerts-container">
+      <div class="alert-chip warning">⏰ <span id="alert-expiring-cnt">0</span> Users Expiring Today</div>
+      <div class="alert-chip danger">⌛ <span id="alert-pending-cnt">0</span> Pending Bills</div>
+      <div class="alert-chip danger">🔁 <span id="alert-duplicate-cnt">0</span> Duplicate Records</div>
+      <div class="alert-chip purple">⚠️ <span id="alert-mismatch-cnt">0</span> Mismatch Amounts</div>
+    </div>
+
+    <!-- ─── 5. SETTINGS PAGE ─── -->
+    <div id="page-settings" class="page">
+      <h2>⚙️ System Settings & Configurations</h2>
+      <div class="settings-nav" style="margin-top:16px;">
+        <div class="settings-tab active" onclick="AppUI.switchSettingsTab('packages', this)">📦 Packages</div>
+        <div class="settings-tab" onclick="AppUI.switchSettingsTab('areas', this)">📍 Area List</div>
+        <div class="settings-tab" onclick="AppUI.switchSettingsTab('staff', this)">👥 Staff</div>
+        <div class="settings-tab" onclick="AppUI.switchSettingsTab('database', this)">⚠️ Database Control</div>
+      </div>
+
+      <div id="set-tab-packages" class="settings-content">
+        <div class="card"><p>Packages configuration screen.</p></div>
+      </div>
+
+      <div id="set-tab-areas" class="settings-content" style="display:none;">
+        <div class="card"><p>Area management screen.</p></div>
+      </div>
+
+      <div id="set-tab-staff" class="settings-content" style="display:none;">
+        <div class="card"><p>Staff management screen.</p></div>
+      </div>
+
+      <!-- NEW DATABASE CONTROL TAB WITH CLEAR ALL DATA BUTTON -->
+      <div id="set-tab-database" class="settings-content" style="display:none;">
+        <div class="card" style="border: 2px solid var(--danger); background: var(--danger-light);">
+          <h3 style="color: var(--danger); font-size: 18px; font-weight: 800; margin-bottom: 8px;">🚨 Danger Zone - Data Management</h3>
+          <p style="font-size: 13.5px; margin-bottom: 20px; color: var(--text-main);">
+            Is button par click karne se tamam local sales records, imported billing files aur ledger clear ho jayenge.
+          </p>
+          <button class="btn btn-danger" style="padding: 12px 24px; font-size: 14px;" onclick="AppUI.clearAllData()">
+            🗑️ CLEAR ALL DATA
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ══ USER PROFILE MODAL ══ -->
+  <div class="modal-overlay" id="userModal">
+    <div class="modal-card">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h2 style="font-size:18px; font-weight:800;" id="modal-user-id">User Profile</h2>
+        <button class="btn" onclick="document.getElementById('userModal').classList.remove('active')">✕ Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="ur" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Air Touch ERP - Ledger</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <!-- xlsx-js-style: SheetJS-compatible (same global XLSX, same read/import API) but also
+       writes real cell styling (fills, fonts, borders) into the .xlsx file, which the plain
+       cdnjs 'xlsx' build cannot do — this is what makes the Export button's file look designed. -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+  <style>
+    :root {
+      --primary-blue: #0A3663;
+      --hover-blue: #0E4782;
+      --success-green: #208B3A;
+      --light-green: #2DC653;
+      --warning-orange: #D97706;
+      --danger-red: #DC2626;
+      --bg-gray: #F0F4F8;
+      --card-bg: #FFFFFF;
+      --text-dark: #1E293B;
+      --text-muted: #64748B;
+      --border-color: #CBD5E1;
+      --purple-accent: #7C3AED;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+    body { background-color: var(--bg-gray); color: var(--text-dark); display: flex; height: 100vh; overflow: hidden; }
+
+    .sidebar { width: 260px; background: var(--primary-blue); color: #ffffff; display: flex; flex-direction: column; box-shadow: 4px 0 12px rgba(0,0,0,0.15); z-index: 10; overflow-y: auto; }
+    .brand-header { padding: 16px 18px; background: rgba(0, 0, 0, 0.25); border-bottom: 4px solid var(--light-green); display: flex; align-items: center; gap: 10px; }
+    .brand-header i { font-size: 22px; color: var(--light-green); }
+    .brand-header h2 { font-size: 16px; font-weight: 800; letter-spacing: 0.5px; }
+
+    .nav-menu { padding: 12px 8px; display: flex; flex-direction: column; gap: 4px; }
+    .menu-group { display: flex; flex-direction: column; }
+    .menu-header { padding: 9px 12px; color: #FFFFFF; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: space-between; border-radius: 6px; cursor: pointer; transition: all 0.2s; }
+    .menu-header:hover { background: rgba(255, 255, 255, 0.1); }
+    .menu-header-title { display: flex; align-items: center; gap: 8px; }
+    .arrow-icon { font-size: 10px; transition: transform 0.2s; }
+
+    .tree-sub { display: none; flex-direction: column; padding-left: 20px; gap: 2px; margin-top: 2px; }
+    .menu-group.open .tree-sub { display: flex; }
+    .menu-group.open .arrow-icon { transform: rotate(90deg); }
+
+    .tree-item { padding: 6px 10px; color: #94A3B8; font-size: 11px; font-weight: 600; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+    .tree-item::before { content: '├─'; color: #475569; font-family: monospace; }
+    .tree-item:last-child::before { content: '└─'; }
+    .tree-item:hover, .tree-item.active { color: #FFFFFF; background: rgba(255, 255, 255, 0.12); }
+    .tree-item.active { color: var(--light-green); font-weight: 700; }
+
+    .main-wrapper { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+    .top-bar { background: var(--card-bg); padding: 10px 24px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; gap: 20px; }
+    .global-search { display: flex; align-items: center; background: #F1F5F9; border: 1px solid var(--border-color); border-radius: 6px; padding: 7px 14px; width: 420px; gap: 10px; }
+    .global-search input { border: none; background: transparent; outline: none; font-size: 12px; width: 100%; }
+
+    .top-right { display: flex; align-items: center; gap: 18px; }
+    .bell-icon { position: relative; cursor: pointer; font-size: 16px; color: var(--text-dark); }
+    .bell-badge { position: absolute; top: -6px; right: -8px; background: var(--danger-red); color: white; font-size: 9px; font-weight: 800; border-radius: 50%; padding: 2px 5px; }
+
+    .header-section { background: #FFFFFF; padding: 12px 24px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; }
+    .breadcrumbs { font-size: 11px; color: var(--text-muted); font-weight: 600; display: flex; align-items: center; gap: 6px; }
+    .breadcrumbs span.active { color: var(--primary-blue); font-weight: 700; }
+    .breadcrumbs span.link { cursor: pointer; }
+    .breadcrumbs span.link:hover { color: var(--primary-blue); text-decoration: underline; }
+
+    .action-toolbar { display: flex; gap: 8px; }
+    .btn { padding: 7px 12px; border-radius: 5px; font-size: 11px; font-weight: 700; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s; }
+    .btn:active { transform: scale(0.96); }
+    .btn-primary { background: var(--primary-blue); color: white; }
+    .btn-success { background: var(--success-green); color: white; }
+    .btn-purple { background: var(--purple-accent); color: white; }
+    .btn-outline { background: #F8FAFC; border: 1px solid var(--border-color); color: var(--text-dark); }
+    .btn-outline:hover { background: #E2E8F0; }
+    .btn-danger { background: var(--danger-red); color: white; }
+    .btn-danger:hover { background: #B91C1C; }
+
+    .content-body { flex: 1; padding: 16px 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
+
+    .metrics-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
+    .metric-card { background: var(--card-bg); border-radius: 6px; padding: 12px; border: 1px solid var(--border-color); display: flex; flex-direction: column; justify-content: space-between; gap: 4px; transition: transform .15s ease; }
+    .metric-card:hover { transform: translateY(-2px); }
+    .metric-card label { font-size: 9px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
+    .metric-card h3 { font-size: 16px; font-weight: 800; color: var(--primary-blue); }
+
+    .dashboard-grid { display: grid; grid-template-columns: 1fr 300px; gap: 16px; align-items: start; }
+    .panel-card { background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border-color); display: flex; flex-direction: column; overflow: hidden; }
+    .panel-header { padding: 10px 14px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: #F8FAFC; gap: 10px; flex-wrap: wrap; }
+    .panel-header h3 { font-size: 12px; font-weight: 700; color: var(--primary-blue); display: flex; align-items: center; gap: 6px; }
+
+    .filter-bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .filter-bar select { padding: 6px 8px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 10px; font-weight: 700; color: var(--text-dark); background: white; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 11px; }
+    thead th { background: var(--primary-blue); color: white; text-align: left; padding: 8px 10px; font-weight: 600; }
+    tbody td { padding: 8px 10px; border-bottom: 1px solid var(--border-color); vertical-align: middle; }
+    tbody tr:hover { background-color: #F1F5F9; }
+    tbody tr.removing { animation: fadeOut .2s ease forwards; }
+    @keyframes fadeOut { to { opacity: 0; } }
+
+    .badge-success { background: #DCFCE7; color: var(--success-green); padding: 2px 6px; border-radius: 10px; font-weight: 700; white-space: nowrap; }
+    .badge-warning { background: #FEF3C7; color: var(--warning-orange); padding: 2px 6px; border-radius: 10px; font-weight: 700; white-space: nowrap; }
+    .badge-danger { background: #FEE2E2; color: var(--danger-red); padding: 2px 6px; border-radius: 10px; font-weight: 700; white-space: nowrap; }
+    .badge-info { background: #DBEAFE; color: #1D4ED8; padding: 2px 6px; border-radius: 10px; font-weight: 700; white-space: nowrap; }
+    .badge-purple { background: #EDE9FE; color: var(--purple-accent); padding: 2px 6px; border-radius: 10px; font-weight: 700; white-space: nowrap; }
+
+    .qty-in { color: var(--success-green); font-weight: 800; }
+    .qty-out { color: var(--danger-red); font-weight: 800; }
+
+    .row-actions { display: flex; gap: 4px; }
+    .btn-icon { width: 24px; height: 24px; border-radius: 4px; border: 1px solid var(--border-color); background: white; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 10px; color: var(--text-dark); transition: background .15s ease; }
+    .btn-icon:hover { background: #E2E8F0; }
+
+    /* ITEM BALANCE SIDE PANEL */
+    .balance-list { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; }
+    .balance-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border: 1px solid var(--border-color); border-radius: 6px; background: #F8FAFC; }
+    .balance-row .name { font-size: 10px; font-weight: 700; color: var(--text-dark); }
+    .balance-row .code { font-size: 9px; color: var(--text-muted); font-family: monospace; }
+    .balance-row .val { font-size: 14px; font-weight: 800; color: var(--primary-blue); }
+    .balance-row .in-sync { font-size: 8px; font-weight: 700; color: var(--success-green); display: flex; align-items: center; gap: 3px; }
+    .reconcile-note { font-size: 9px; color: var(--text-muted); padding: 8px 14px 12px; border-top: 1px solid var(--border-color); line-height: 1.5; }
+
+    /* MODAL */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(15,26,43,.55); display: none; align-items: center; justify-content: center; z-index: 500; }
+    .modal-overlay.show { display: flex; }
+    .modal-box { background: var(--card-bg); width: 380px; border-radius: 8px; padding: 18px; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 20px 50px rgba(0,0,0,.3); animation: modalPop .18s ease; max-height: 90vh; overflow-y: auto; }
+    @keyframes modalPop { from { transform: scale(.94); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .modal-box h3 { color: var(--primary-blue); font-size: 13px; }
+    .modal-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .modal-field label { font-size: 9px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; display: block; margin-bottom: 2px; }
+    .modal-field .value { font-size: 12px; font-weight: 700; color: var(--text-dark); }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
+
+    .toast-stack { position: fixed; bottom: 18px; right: 18px; display: flex; flex-direction: column; gap: 8px; z-index: 999; }
+    .toast { background: var(--primary-blue); color: white; padding: 10px 16px; border-radius: 6px; font-size: 11px; font-weight: 700; box-shadow: 0 8px 20px rgba(0,0,0,.25); display: flex; align-items: center; gap: 8px; animation: toastIn .25s ease; }
+    .toast.success { background: var(--success-green); }
+    .toast.danger { background: var(--danger-red); }
+    @keyframes toastIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .toast.leaving { animation: toastOut .25s ease forwards; }
+    @keyframes toastOut { to { opacity: 0; transform: translateX(20px); } }
+  </style>
+  <script src="airtouch_store.js"></script>
+</head>
+<body>
+
+  <aside class="sidebar">
+    <div class="brand-header">
+      <i class="fa-solid fa-wifi"></i>
+      <h2>AIR TOUCH ERP</h2>
+    </div>
+
+    <nav class="nav-menu">
+      <div class="menu-group">
+        <div class="menu-header" onclick="location.href='dashboard.html'">
+          <div class="menu-header-title"><i class="fa-solid fa-house"></i> 🏠 Dashboard</div>
+        </div>
+      </div>
+
+      <div class="menu-group open">
+        <div class="menu-header" onclick="toggleMenu(this)">
+          <div class="menu-header-title"><i class="fa-solid fa-boxes-stacked"></i> 📦 Inventory</div>
+          <i class="fa-solid fa-chevron-right arrow-icon"></i>
+        </div>
+        <div class="tree-sub">
+          <div class="tree-item" onclick="location.href='store_inventory.html'">Store Stock</div>
+          <div class="tree-item" onclick="location.href='purchase.html'">Purchase</div>
+          <div class="tree-item" onclick="location.href='dispatch.html'">Dispatch</div>
+          <div class="tree-item active">Ledger</div>
+        </div>
+      </div>
+
+      <div class="menu-group">
+        <div class="menu-header" onclick="toggleMenu(this)">
+          <div class="menu-header-title"><i class="fa-solid fa-wrench"></i> 🔧 Installation</div>
+          <i class="fa-solid fa-chevron-right arrow-icon"></i>
+        </div>
+        <div class="tree-sub">
+          <div class="tree-item" onclick="location.href='installation.html'">New Installation</div>
+          <div class="tree-item" onclick="location.href='installation.html'">Installation List</div>
+          <div class="tree-item" onclick="location.href='installation.html'">Returned Material</div>
+          <div class="tree-item" onclick="location.href='installation_exchange.html'">Installation Exchange</div>
+        </div>
+      </div>
+
+      <div class="menu-group">
+        <div class="menu-header" onclick="toggleMenu(this)">
+          <div class="menu-header-title"><i class="fa-solid fa-chart-pie"></i> 📊 Reports</div>
+          <i class="fa-solid fa-chevron-right arrow-icon"></i>
+        </div>
+        <div class="tree-sub">
+          <div class="tree-item">Daily Summary</div>
+          <div class="tree-item">Monthly Report</div>
+          <div class="tree-item">City Wise Stock</div>
+        </div>
+      </div>
+
+      <div class="menu-group">
+        <div class="menu-header" onclick="location.href='employees.html'"><div class="menu-header-title"><i class="fa-solid fa-users"></i> 👨 Employees</div></div>
+      </div>
+
+      <div class="menu-group">
+        <div class="menu-header" onclick="location.href='settings.html'"><div class="menu-header-title"><i class="fa-solid fa-gear"></i> ⚙ Settings</div></div>
+      </div>
+    </nav>
+  </aside>
+
+  <main class="main-wrapper">
+
+    <header class="top-bar">
+      <div class="global-search">
+        <i class="fa-solid fa-magnifying-glass" style="color:var(--text-muted);"></i>
+        <input type="text" id="searchInput" placeholder="🔍 Search Item / Reference / Type...">
+      </div>
+
+      <div class="top-right">
+        <div class="bell-icon" title="Notifications" id="bellBtn">
+          <i class="fa-solid fa-bell"></i>
+          <span class="bell-badge" id="bellBadge">1</span>
+        </div>
+        <div style="font-size:11px; font-weight:700; color:var(--primary-blue);">
+          <i class="fa-solid fa-user-circle"></i> Admin Profile
+        </div>
+      </div>
+    </header>
+
+    <section class="header-section">
+      <div class="breadcrumbs">
+        <span class="link" onclick="location.href='dashboard.html'">Dashboard</span> &gt;
+        <span class="link" onclick="location.href='store_inventory.html'">Inventory</span> &gt;
+        <span class="active">Ledger</span>
+      </div>
+
+      <div class="action-toolbar">
+        <button class="btn btn-outline" id="exportBtn"><i class="fa-solid fa-file-export"></i> 📤 Export Excel</button>
+        <button class="btn btn-outline" id="printBtn"><i class="fa-solid fa-print"></i> 🖨 Print</button>
+        <button class="btn btn-outline" id="refreshBtn"><i class="fa-solid fa-rotate"></i> 🔄 Refresh</button>
+        <button class="btn btn-danger" id="clearDataBtn"><i class="fa-solid fa-trash-can"></i> 🗑 Clear Data</button>
+      </div>
+    </section>
+
+    <div class="content-body">
+
+      <section class="metrics-grid" id="metricsGrid">
+        <div class="metric-card"><label>📜 Total Entries</label><h3 id="mTotalEntries">0</h3></div>
+        <div class="metric-card"><label>⬆️ Total Qty In</label><h3 style="color:var(--success-green);" id="mQtyIn">0</h3></div>
+        <div class="metric-card"><label>⬇️ Total Qty Out</label><h3 style="color:var(--danger-red);" id="mQtyOut">0</h3></div>
+        <div class="metric-card"><label>⚖️ Net Movement</label><h3 id="mNetMovement">0</h3></div>
+        <div class="metric-card"><label>📦 Items Affected</label><h3 id="mItemsAffected">0</h3></div>
+        <div class="metric-card"><label>📅 This Month</label><h3 id="mMonthEntries">0</h3></div>
+      </section>
+
+      <div class="dashboard-grid">
+
+        <section class="panel-card">
+          <div class="panel-header">
+            <h3><i class="fa-solid fa-book"></i> Inventory Ledger — Stock Movement History</h3>
+            <div class="filter-bar">
+              <select id="typeFilter">
+                <option value="">All Types</option>
+                <option value="PURCHASE">Purchase</option>
+                <option value="RETURN">Return</option>
+                <option value="DISPATCH">Dispatch</option>
+                <option value="INSTALLATION">Installation</option>
+                <option value="ADJUSTMENT">Adjustment</option>
+              </select>
+              <select id="itemFilter">
+                <option value="">All Items</option>
+              </select>
+              <select id="cityFilter">
+                <option value="">All Cities</option>
+              </select>
+              <select id="periodFilter">
+                <option value="">All Time</option>
+                <option value="daily">📅 Daily (Today)</option>
+                <option value="weekly">🗓️ Weekly (This Week)</option>
+                <option value="monthly">📆 Monthly (This Month)</option>
+                <option value="yearly">🗓️ Yearly (This Year)</option>
+              </select>
+            </div>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Date</th>
+                <th>Item</th>
+                <th>City</th>
+                <th>Type</th>
+                <th>Qty Δ</th>
+                <th>Reference</th>
+                <th>Balance After</th>
+                <th>By</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="ledgerBody"></tbody>
+          </table>
+        </section>
+
+        <section class="panel-card">
+          <div class="panel-header">
+            <h3><i class="fa-solid fa-scale-balanced"></i> Item Balances</h3>
+          </div>
+          <div class="balance-list" id="balanceList"></div>
+          <div class="reconcile-note">
+            <i class="fa-solid fa-circle-info"></i>
+            Balances here are recalculated straight from this ledger — the same
+            check <code>verify_and_reconcile_item_stock()</code> runs against
+            <code>items.available_stock</code> on the backend.
+          </div>
+        </section>
+
+      </div>
+
+    </div>
+  </main>
+
+  <!-- VIEW ENTRY MODAL -->
+  <div class="modal-overlay" id="viewOverlay">
+    <div class="modal-box">
+      <h3><i class="fa-solid fa-receipt"></i> Ledger Entry — <span id="viewRef"></span></h3>
+
+      <div class="modal-row">
+        <div class="modal-field"><label>Item</label><div class="value" id="viewItem"></div></div>
+        <div class="modal-field"><label>City</label><div class="value" id="viewCity"></div></div>
+      </div>
+      <div class="modal-row">
+        <div class="modal-field"><label>Type</label><div class="value" id="viewType"></div></div>
+        <div class="modal-field"><label>Qty Change</label><div class="value" id="viewQty"></div></div>
+      </div>
+      <div class="modal-row">
+        <div class="modal-field"><label>Balance After</label><div class="value" id="viewBalance"></div></div>
+        <div class="modal-field"><label>Date</label><div class="value" id="viewDate"></div></div>
+      </div>
+      <div class="modal-row">
+        <div class="modal-field"><label>Recorded By</label><div class="value" id="viewUser"></div></div>
+      </div>
+      <div class="modal-field"><label>Reference</label><div class="value" id="viewRefFull"></div></div>
+
+      <div class="modal-actions">
+        <button class="btn btn-outline" id="viewCloseBtn">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-stack" id="toastStack"></div>
+
+  <script>
+    function toggleMenu(element) {
+      element.parentElement.classList.toggle('open');
+    }
+
+    /* ---------------- SHARED CENTRAL STORE (single source of truth) ---------------- */
+    // Items now come live from AirTouchStore (airtouch_store.js) — the SAME store
+    // store_inventory.html and dispatch.html read/write — so the "All Items" filter
+    // and every item name shown here always match what dispatch.html shows.
+    function items() { return AirTouchStore.getItems(); }
+    const users = { 1: 'Admin', 2: 'Ali Raza', 3: 'Asad Khan' };
+
+    // Mirrors the `cities` table -- same list used by dispatch.html's city picker.
+    // PURCHASE/RETURN/ADJUSTMENT entries happen at the central store, so they
+    // carry no city (shown as "Warehouse"); DISPATCH/INSTALLATION entries move
+    // stock out to one of these.
+    const cities = [
+      { code: 'BTK', name: 'Bahria Town' },
+      { code: 'DHR', name: 'Dhamial' },
+      { code: 'TOK', name: 'Tokar' },
+      { code: 'BDN', name: 'Bandi' },
+      { code: 'CKD', name: 'Chakwal Road' },
+      { code: 'OCH', name: 'Ochali' },
+      { code: 'SKT', name: 'Saket' },
+      { code: 'THA', name: 'Thanda Pani' },
+      { code: 'ALD', name: 'Aldrich Colony' },
+      { code: 'TLS', name: 'Talwara' },
+      { code: 'MTA', name: 'Mattani' },
+      { code: 'SWT', name: 'Swat' },
+      { code: 'TMG', name: 'Tarnama' },
+      { code: 'KKL', name: 'Kakul' },
+      { code: 'CHARBAGH', name: 'Charbagh' },
+      { code: 'KOT', name: 'Kot' },
+      { code: 'SHM', name: 'Shamozai' },
+      { code: 'GHL', name: 'Ghalanai' },
+    ];
+
+    /* ---------------- SHARED CENTRAL LEDGER (single source of truth) ----------------
+       Ledger entries now come LIVE from AirTouchStore — the same log that
+       recordPurchase()/recordDispatch() write to. So every dispatch entered on
+       dispatch.html (and every purchase on purchase.html) shows up here
+       automatically, with no separate/local copy to fall out of sync. */
+    function ledgerRows(){
+      return AirTouchStore.getLedger().map(r => ({
+        id: r.id,
+        item_id: r.itemId,
+        type: r.type,
+        qty: r.qty,
+        ref: r.reference,
+        user_id: r.recordedBy || null,
+        date: r.date,
+        city_code: r.city || null,
+      }));
+    }
+
+    function toISODate(value){
+      if (!value) return new Date().toISOString().slice(0,10);
+      if (value instanceof Date && !isNaN(value)) return value.toISOString().slice(0,10);
+      const parsed = new Date(value);
+      return isNaN(parsed) ? new Date().toISOString().slice(0,10) : parsed.toISOString().slice(0,10);
+    }
+    function itemById(id){ return items().find(i => i.id === id); }
+    function userName(id){ return id ? (users[id] || 'Unknown') : 'System'; }
+    function cityName(code){ if (!code) return 'Warehouse'; return code; }
+
+    // Returns true if a YYYY-MM-DD date string falls inside the chosen period,
+    // measured against today's real date (daily/weekly/monthly/yearly).
+    function matchesPeriod(dateStr, period){
+      if (!period) return true;
+      const d = new Date(dateStr);
+      if (isNaN(d)) return false;
+      const now = new Date();
+      if (period === 'daily'){
+        return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+      }
+      if (period === 'weekly'){
+        // Week starts Monday.
+        const startOfWeek = new Date(now);
+        const day = (now.getDay() + 6) % 7; // 0 = Monday
+        startOfWeek.setDate(now.getDate() - day);
+        startOfWeek.setHours(0,0,0,0);
+        const endOfWeek = new Date(startOfWeek);
+        endOfWeek.setDate(startOfWeek.getDate() + 7);
+        return d >= startOfWeek && d < endOfWeek;
+      }
+      if (period === 'monthly'){
+        return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+      }
+      if (period === 'yearly'){
+        return d.getFullYear() === now.getFullYear();
+      }
+      return true;
+    }
+
+    function typeBadge(type){
+      const map = {
+        PURCHASE:     '<span class="badge-success">🟢 Purchase</span>',
+        RETURN:       '<span class="badge-info">🔵 Return</span>',
+        DISPATCH:     '<span class="badge-warning">🟠 Dispatch</span>',
+        INSTALLATION: '<span class="badge-purple">🟣 Installation</span>',
+        ADJUSTMENT:   '<span class="badge-danger">🔴 Adjustment</span>',
+      };
+      return map[type] || type;
+    }
+
+    /* ---------------- RUNNING BALANCE (recalculated from the ledger, per item, chronologically) ----------------
+       This mirrors verify_and_reconcile_item_stock(): sort each item's rows by
+       (date, id) ascending, accumulate qty, and stamp the balance onto each row. */
+    function withRunningBalances(){
+      const sorted = [...ledgerRows()].sort((a, b) => a.date === b.date ? String(a.id).localeCompare(String(b.id)) : a.date.localeCompare(b.date));
+      const balances = {};
+      const stamped = sorted.map(row => {
+        balances[row.item_id] = (balances[row.item_id] || 0) + row.qty;
+        return { ...row, balanceAfter: balances[row.item_id] };
+      });
+      const map = new Map(stamped.map(r => [r.id, r]));
+      return { finalBalances: balances, byId: map };
+    }
+
+    function populateItemFilter(){
+      const sel = document.getElementById('itemFilter');
+      items().forEach(it => {
+        const opt = document.createElement('option');
+        opt.value = it.id;
+        opt.textContent = `${it.code} — ${it.name}`;
+        sel.appendChild(opt);
+      });
+    }
+
+    function populateCityFilter(){
+      const sel = document.getElementById('cityFilter');
+      const opt = document.createElement('option');
+      opt.value = 'WAREHOUSE';
+      opt.textContent = 'Warehouse (no city)';
+      sel.appendChild(opt);
+      cities.forEach(c => {
+        const o = document.createElement('option');
+        o.value = c.code;
+        o.textContent = c.code;
+        sel.appendChild(o);
+      });
+    }
+
+    /* ---------------- RENDER: LEDGER TABLE ---------------- */
+
+    function renderLedger(){
+      const q = (document.getElementById('searchInput').value || '').toLowerCase();
+      const typeFilter = document.getElementById('typeFilter').value;
+      const itemFilter = document.getElementById('itemFilter').value;
+      const cityFilter = document.getElementById('cityFilter').value;
+      const periodFilter = document.getElementById('periodFilter').value;
+
+      const { byId } = withRunningBalances();
+      const body = document.getElementById('ledgerBody');
+
+      const rows = [...ledgerRows()]
+        .filter(r => {
+          if (typeFilter && r.type !== typeFilter) return false;
+          if (itemFilter && String(r.item_id) !== itemFilter) return false;
+          if (cityFilter === 'WAREHOUSE' && r.city_code) return false;
+          if (cityFilter && cityFilter !== 'WAREHOUSE' && r.city_code !== cityFilter) return false;
+          if (!matchesPeriod(r.date, periodFilter)) return false;
+          if (!q) return true;
+          const it = itemById(r.item_id);
+          return r.ref.toLowerCase().includes(q) ||
+                 r.type.toLowerCase().includes(q) ||
+                 cityName(r.city_code).toLowerCase().includes(q) ||
+                 (it && (it.code.toLowerCase().includes(q) || it.name.toLowerCase().includes(q)));
+        })
+        .sort((a, b) => b.date === a.date ? String(b.id).localeCompare(String(a.id)) : b.date.localeCompare(a.date));
+
+      body.innerHTML = rows.map(r => {
+        const it = itemById(r.item_id);
+        const stamped = byId.get(r.id);
+        const qtyClass = r.qty >= 0 ? 'qty-in' : 'qty-out';
+        const qtyText = (r.qty >= 0 ? '+' : '') + r.qty.toLocaleString();
+        return `<tr data-id="${r.id}">
+          <td>${r.id}</td>
+          <td>${toISODate(r.date)}</td>
+          <td>${it ? `${it.code} — ${it.name}` : r.item_id}</td>
+          <td>${r.city_code ? `<strong>${cityName(r.city_code)}</strong>` : '<span style="color:var(--text-muted);">Warehouse</span>'}</td>
+          <td>${typeBadge(r.type)}</td>
+          <td><span class="${qtyClass}">${qtyText}</span></td>
+          <td><code>${r.ref}</code></td>
+          <td><strong>${stamped.balanceAfter.toLocaleString()}</strong></td>
+          <td>${userName(r.user_id)}</td>
+          <td>
+            <div class="row-actions">
+              <button class="btn-icon" title="View" data-action="view"><i class="fa-solid fa-eye"></i></button>
+            </div>
+          </td>
+        </tr>`;
+      }).join('') || `<tr><td colspan="10" style="text-align:center; color:var(--text-muted); padding:16px;">No ledger entries match your search/filters</td></tr>`;
+
+      body.querySelectorAll('button[data-action="view"]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.closest('tr').dataset.id;
+          openViewModal(id);
+        });
+      });
+
+      updateMetrics();
+      renderBalances();
+    }
+
+    /* ---------------- METRICS ---------------- */
+    function updateMetrics(){
+      const rows = ledgerRows();
+      const totalEntries = rows.length;
+      const qtyIn = rows.filter(r => r.qty > 0).reduce((s, r) => s + r.qty, 0);
+      const qtyOut = rows.filter(r => r.qty < 0).reduce((s, r) => s + Math.abs(r.qty), 0);
+      const netMovement = qtyIn - qtyOut;
+      const itemsAffected = new Set(rows.map(r => r.item_id)).size;
+      const now = new Date();
+      const monthEntries = rows.filter(r => {
+        const d = new Date(r.date);
+        return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+      }).length;
+
+      document.getElementById('mTotalEntries').textContent = totalEntries.toLocaleString();
+      document.getElementById('mQtyIn').textContent = qtyIn.toLocaleString();
+      document.getElementById('mQtyOut').textContent = qtyOut.toLocaleString();
+      document.getElementById('mNetMovement').textContent = (netMovement >= 0 ? '+' : '') + netMovement.toLocaleString();
+      document.getElementById('mItemsAffected').textContent = itemsAffected;
+      document.getElementById('mMonthEntries').textContent = monthEntries;
+    }
+
+    /* ---------------- ITEM BALANCE PANEL ---------------- */
+    function renderBalances(){
+      const { finalBalances } = withRunningBalances();
+      const list = document.getElementById('balanceList');
+      list.innerHTML = items().map(it => {
+        const bal = finalBalances[it.id] || 0;
+        return `<div class="balance-row">
+          <div>
+            <div class="name">${it.name}</div>
+            <div class="code">${it.code}</div>
+          </div>
+          <div style="text-align:right;">
+            <div class="val">${bal.toLocaleString()}</div>
+            <div class="in-sync"><i class="fa-solid fa-circle-check"></i> In sync</div>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    /* ---------------- VIEW ENTRY MODAL ---------------- */
+    const viewOverlay = document.getElementById('viewOverlay');
+    function openViewModal(id){
+      const { byId } = withRunningBalances();
+      const r = byId.get(id);
+      if (!r) return;
+      const it = itemById(r.item_id);
+      document.getElementById('viewRef').textContent = r.ref;
+      document.getElementById('viewRefFull').textContent = r.ref;
+      document.getElementById('viewItem').textContent = it ? `${it.code} — ${it.name}` : r.item_id;
+      document.getElementById('viewCity').textContent = cityName(r.city_code);
+      document.getElementById('viewType').innerHTML = typeBadge(r.type);
+      document.getElementById('viewQty').innerHTML = `<span class="${r.qty >= 0 ? 'qty-in' : 'qty-out'}">${(r.qty >= 0 ? '+' : '') + r.qty.toLocaleString()}</span>`;
+      document.getElementById('viewBalance').textContent = r.balanceAfter.toLocaleString();
+      document.getElementById('viewDate').textContent = toISODate(r.date);
+      document.getElementById('viewUser').textContent = userName(r.user_id);
+      viewOverlay.classList.add('show');
+    }
+    document.getElementById('viewCloseBtn').onclick = () => viewOverlay.classList.remove('show');
+    viewOverlay.addEventListener('click', e => { if (e.target === viewOverlay) viewOverlay.classList.remove('show'); });
+
+    /* ---------------- TOOLBAR ---------------- */
+    document.getElementById('searchInput').addEventListener('input', renderLedger);
+    document.getElementById('typeFilter').addEventListener('change', renderLedger);
+    document.getElementById('itemFilter').addEventListener('change', renderLedger);
+    document.getElementById('cityFilter').addEventListener('change', renderLedger);
+    document.getElementById('periodFilter').addEventListener('change', renderLedger);
+
+    document.getElementById('refreshBtn').onclick = () => {
+      document.getElementById('searchInput').value = '';
+      document.getElementById('typeFilter').value = '';
+      document.getElementById('itemFilter').value = '';
+      document.getElementById('cityFilter').value = '';
+      document.getElementById('periodFilter').value = '';
+      renderLedger();
+      showToast('Ledger refreshed', 'success');
+    };
+
+    document.getElementById('clearDataBtn').onclick = () => {
+      if (!ledgerRows().length) { showToast('Ledger is already empty', ''); return; }
+      if (!confirm('Clear all ledger (history) entries? This does NOT change current stock levels — only the transaction history log. It clears the shared history everywhere (dispatch/purchase records too), not just this page, and cannot be undone.')) return;
+      AirTouchStore.clearLedger();
+      document.getElementById('searchInput').value = '';
+      document.getElementById('typeFilter').value = '';
+      document.getElementById('itemFilter').value = '';
+      document.getElementById('cityFilter').value = '';
+      document.getElementById('periodFilter').value = '';
+      renderLedger();
+      showToast('Ledger cleared', 'danger');
+    };
+    document.getElementById('printBtn').onclick = () => window.print();
+
+    /* ---------------- EXPORT (styled .xlsx — branded banner, colored header, signed-qty coloring, banded rows) ---------------- */
+    document.getElementById('exportBtn').onclick = () => {
+      const { byId } = withRunningBalances();
+      const sorted = [...ledgerRows()].sort((a, b) => b.date === a.date ? String(b.id).localeCompare(String(a.id)) : b.date.localeCompare(a.date));
+
+      const COLS = 10;
+      const HEADERS = ['Entry #', 'Date', 'Item Code', 'Item Name', 'City', 'Type', 'Qty Change', 'Reference', 'Balance After', 'Recorded By'];
+
+      // Brand palette pulled from this page's own CSS variables, so the exported
+      // file visually matches the app instead of looking like a generic dump.
+      const NAVY = '146C2E', WHITE = 'FFFFFF', TEXT_DARK = '1E293B', BORDER = 'CBD5E1', BAND = 'F0F4F8', GREEN = '208B3A', RED = 'DC2626';
+
+      const thinBorder = { style: 'thin', color: { rgb: BORDER } };
+      const borderAll = { top: thinBorder, bottom: thinBorder, left: thinBorder, right: thinBorder };
+
+      const titleStyle = { font: { name: 'Calibri', sz: 16, bold: true, color: { rgb: WHITE } }, fill: { fgColor: { rgb: NAVY } }, alignment: { horizontal: 'center', vertical: 'center' } };
+      const subtitleStyle = { font: { name: 'Calibri', sz: 10, italic: true, color: { rgb: '64748B' } }, alignment: { horizontal: 'center' } };
+      const headerStyle = { font: { name: 'Calibri', sz: 11, bold: true, color: { rgb: WHITE } }, fill: { fgColor: { rgb: NAVY } }, alignment: { horizontal: 'center', vertical: 'center' }, border: borderAll };
+
+      function rowStyle(bandFill, qty, colIndex) {
+        const isQtyCol = colIndex === 6;
+        return {
+          font: { name: 'Calibri', sz: 10.5, color: { rgb: isQtyCol ? (qty < 0 ? RED : GREEN) : TEXT_DARK }, bold: isQtyCol },
+          fill: { fgColor: { rgb: bandFill ? BAND : WHITE } },
+          alignment: { horizontal: colIndex === 3 ? 'left' : 'center', vertical: 'center' },
+          border: borderAll,
+        };
+      }
+
+      const aoa = [];
+      aoa.push(['Air Touch Enterprise — Inventory Ledger Report', '', '', '', '', '', '', '', '', '']);
+      aoa.push([`Generated on ${toISODate(new Date())}  •  ${sorted.length} entries`, '', '', '', '', '', '', '', '', '']);
+      aoa.push(HEADERS);
+      sorted.forEach(r => {
+        const it = itemById(r.item_id);
+        const stamped = byId.get(r.id);
+        aoa.push([r.id, new Date(toISODate(r.date)), it ? it.code : r.item_id, it ? it.name : '', cityName(r.city_code), r.type, r.qty, r.ref, stamped.balanceAfter, userName(r.user_id)]);
+      });
+      const totalsRowIndex = 3 + sorted.length;
+
+      const worksheet = XLSX.utils.aoa_to_sheet(aoa);
+      worksheet['!cols'] = [{wch:9},{wch:12},{wch:12},{wch:26},{wch:16},{wch:14},{wch:11},{wch:16},{wch:14},{wch:14}];
+      worksheet['!rows'] = [{hpt:26},{hpt:16}];
+      worksheet['!merges'] = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: COLS - 1 } },
+        { s: { r: 1, c: 0 }, e: { r: 1, c: COLS - 1 } },
+      ];
+      worksheet['!freeze'] = { xSplit: 0, ySplit: 3 };
+      worksheet['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 2, c: 0 }, e: { r: totalsRowIndex - 1, c: COLS - 1 } }) };
+
+      for (let c = 0; c < COLS; c++) {
+        const t = XLSX.utils.encode_cell({ r: 0, c });
+        if (worksheet[t]) worksheet[t].s = titleStyle;
+        const s = XLSX.utils.encode_cell({ r: 1, c });
+        if (worksheet[s]) worksheet[s].s = subtitleStyle;
+      }
+      for (let c = 0; c < COLS; c++) {
+        const ref = XLSX.utils.encode_cell({ r: 2, c });
+        if (worksheet[ref]) worksheet[ref].s = headerStyle;
+      }
+      sorted.forEach((r, idx) => {
+        const rIdx = 3 + idx;
+        for (let c = 0; c < COLS; c++) {
+          const ref = XLSX.utils.encode_cell({ r: rIdx, c });
+          if (!worksheet[ref]) continue;
+          worksheet[ref].s = rowStyle(idx % 2 === 1, r.qty, c);
+          if (c === 1) worksheet[ref].z = 'yyyy-mm-dd';
+          if (c === 6) worksheet[ref].z = '+#,##0;-#,##0';
+        }
+      });
+
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Ledger');
+      XLSX.writeFile(workbook, `inventory_ledger_export_${toISODate(new Date())}.xlsx`);
+      showToast('Ledger exported as a designed Excel (.xlsx)', 'success');
+    };
+
+    /* ---------------- NOTIFICATIONS ---------------- */
+    document.getElementById('bellBtn').onclick = () => {
+      document.getElementById('bellBadge').style.display = 'none';
+      showToast('1 low-stock item after recent dispatches', '');
+    };
+
+    /* ---------------- TOASTS ---------------- */
+    function showToast(msg, kind){
+      const stack = document.getElementById('toastStack');
+      const t = document.createElement('div');
+      t.className = `toast ${kind||''}`;
+      t.innerHTML = `<i class="fa-solid fa-circle-check"></i> ${msg}`;
+      stack.appendChild(t);
+      setTimeout(() => { t.classList.add('leaving'); setTimeout(() => t.remove(), 250); }, 2600);
+    }
+
+    /* ---------------- INIT ---------------- */
+    populateItemFilter();
+    populateCityFilter();
+    renderLedger();
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="ur" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Air Touch ERP - Store Inventory</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <!-- xlsx-js-style: SheetJS-compatible (same global XLSX, same read/import API) but also
+       writes real cell styling (fills, fonts, borders) into the .xlsx file, which the plain
+       cdnjs 'xlsx' build cannot do — this is what makes the Export button's file look designed. -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+  <style>
+    :root {
+      --primary-blue: #0A3663;
+      --hover-blue: #0E4782;
+      --success-green: #208B3A;
+      --light-green: #2DC653;
+      --warning-orange: #D97706;
+      --danger-red: #DC2626;
+      --bg-gray: #F0F4F8;
+      --card-bg: #FFFFFF;
+      --text-dark: #1E293B;
+      --text-muted: #64748B;
+      --border-color: #CBD5E1;
+      --purple-accent: #7C3AED;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+    body { background-color: var(--bg-gray); color: var(--text-dark); display: flex; height: 100vh; overflow: hidden; }
+
+    .sidebar { width: 260px; background: var(--primary-blue); color: #ffffff; display: flex; flex-direction: column; box-shadow: 4px 0 12px rgba(0,0,0,0.15); z-index: 10; overflow-y: auto; }
+    .brand-header { padding: 16px 18px; background: rgba(0, 0, 0, 0.25); border-bottom: 4px solid var(--light-green); display: flex; align-items: center; gap: 10px; }
+    .brand-header i { font-size: 22px; color: var(--light-green); }
+    .brand-header h2 { font-size: 16px; font-weight: 800; letter-spacing: 0.5px; }
+
+    .nav-menu { padding: 12px 8px; display: flex; flex-direction: column; gap: 4px; }
+    .menu-group { display: flex; flex-direction: column; }
+    .menu-header { padding: 9px 12px; color: #FFFFFF; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: space-between; border-radius: 6px; cursor: pointer; transition: all 0.2s; }
+    .menu-header:hover { background: rgba(255, 255, 255, 0.1); }
+    .menu-header-title { display: flex; align-items: center; gap: 8px; }
+    .arrow-icon { font-size: 10px; transition: transform 0.2s; }
+
+    .tree-sub { display: none; flex-direction: column; padding-left: 20px; gap: 2px; margin-top: 2px; }
+    .menu-group.open .tree-sub { display: flex; }
+    .menu-group.open .arrow-icon { transform: rotate(90deg); }
+
+    .tree-item { padding: 6px 10px; color: #94A3B8; font-size: 11px; font-weight: 600; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+    .tree-item::before { content: '├─'; color: #475569; font-family: monospace; }
+    .tree-item:last-child::before { content: '└─'; }
+    .tree-item:hover, .tree-item.active { color: #FFFFFF; background: rgba(255, 255, 255, 0.12); }
+    .tree-item.active { color: var(--light-green); font-weight: 700; }
+
+    .main-wrapper { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+    .top-bar { background: var(--card-bg); padding: 10px 24px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; gap: 20px; }
+    .global-search { display: flex; align-items: center; background: #F1F5F9; border: 1px solid var(--border-color); border-radius: 6px; padding: 7px 14px; width: 420px; gap: 10px; }
+    .global-search input { border: none; background: transparent; outline: none; font-size: 12px; width: 100%; }
+
+    .top-right { display: flex; align-items: center; gap: 18px; }
+    .bell-icon { position: relative; cursor: pointer; font-size: 16px; color: var(--text-dark); }
+    .bell-badge { position: absolute; top: -6px; right: -8px; background: var(--danger-red); color: white; font-size: 9px; font-weight: 800; border-radius: 50%; padding: 2px 5px; }
+
+    .header-section { background: #FFFFFF; padding: 12px 24px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; }
+    .breadcrumbs { font-size: 11px; color: var(--text-muted); font-weight: 600; display: flex; align-items: center; gap: 6px; }
+    .breadcrumbs span.active { color: var(--primary-blue); font-weight: 700; }
+
+    .action-toolbar { display: flex; gap: 8px; }
+    .btn { padding: 7px 12px; border-radius: 5px; font-size: 11px; font-weight: 700; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s; }
+    .btn:active { transform: scale(0.96); }
+    .btn-primary { background: var(--primary-blue); color: white; }
+    .btn-success { background: var(--success-green); color: white; }
+    .btn-purple { background: var(--purple-accent); color: white; }
+    .btn-outline { background: #F8FAFC; border: 1px solid var(--border-color); color: var(--text-dark); }
+    .btn-outline:hover { background: #E2E8F0; }
+    .btn-danger { background: var(--danger-red); color: white; }
+    .btn-danger:hover { background: #B91C1C; }
+
+    .content-body { flex: 1; padding: 16px 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
+
+    .metrics-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; max-width: 500px; }
+    .metric-card { background: var(--card-bg); border-radius: 6px; padding: 12px; border: 1px solid var(--border-color); display: flex; flex-direction: column; justify-content: space-between; gap: 4px; transition: transform .15s ease; }
+    .metric-card:hover { transform: translateY(-2px); }
+    .metric-card label { font-size: 9px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
+    .metric-card h3 { font-size: 16px; font-weight: 800; color: var(--primary-blue); }
+
+    .dashboard-grid { display: grid; grid-template-columns: 1fr 340px; gap: 16px; }
+    .panel-card { background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border-color); display: flex; flex-direction: column; overflow: hidden; }
+    .panel-header { padding: 10px 14px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: #F8FAFC; }
+    .panel-header h3 { font-size: 12px; font-weight: 700; color: var(--primary-blue); display: flex; align-items: center; gap: 6px; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 11px; }
+    thead th { background: var(--primary-blue); color: white; text-align: left; padding: 8px 10px; font-weight: 600; }
+    tbody td { padding: 8px 10px; border-bottom: 1px solid var(--border-color); vertical-align: middle; }
+    tbody tr:hover { background-color: #F1F5F9; }
+    tbody tr.removing { animation: fadeOut .2s ease forwards; }
+    @keyframes fadeOut { to { opacity: 0; } }
+
+    .badge-success { background: #DCFCE7; color: var(--success-green); padding: 2px 6px; border-radius: 10px; font-weight: 700; }
+    .badge-warning { background: #FEF3C7; color: var(--warning-orange); padding: 2px 6px; border-radius: 10px; font-weight: 700; }
+    .badge-danger { background: #FEE2E2; color: var(--danger-red); padding: 2px 6px; border-radius: 10px; font-weight: 700; }
+
+    .row-actions { display: flex; gap: 4px; }
+    .btn-icon { width: 24px; height: 24px; border-radius: 4px; border: 1px solid var(--border-color); background: white; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 10px; color: var(--text-dark); transition: background .15s ease; }
+    .btn-icon:hover { background: #E2E8F0; }
+
+    .timeline { padding: 12px 14px; display: flex; flex-direction: column; gap: 12px; }
+    .timeline-item { display: flex; gap: 10px; font-size: 11px; border-bottom: 1px solid #F1F5F9; padding-bottom: 8px; }
+    .time-badge { font-weight: 800; color: var(--primary-blue); width: 45px; }
+
+    /* MODAL */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(15,26,43,.55); display: none; align-items: center; justify-content: center; z-index: 500; }
+    .modal-overlay.show { display: flex; }
+    .modal-box { background: var(--card-bg); width: 380px; max-height: 88vh; overflow-y: auto; border-radius: 8px; padding: 18px; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 20px 50px rgba(0,0,0,.3); animation: modalPop .18s ease; }
+    @keyframes modalPop { from { transform: scale(.94); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .modal-box h3 { color: var(--primary-blue); font-size: 13px; }
+    .modal-box label { font-size: 10px; font-weight: 700; color: var(--text-muted); }
+    .modal-box input, .modal-box select { padding: 6px 8px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 11px; }
+    .modal-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
+
+    .toast-stack { position: fixed; bottom: 18px; right: 18px; display: flex; flex-direction: column; gap: 8px; z-index: 999; }
+    .toast { background: var(--primary-blue); color: white; padding: 10px 16px; border-radius: 6px; font-size: 11px; font-weight: 700; box-shadow: 0 8px 20px rgba(0,0,0,.25); display: flex; align-items: center; gap: 8px; animation: toastIn .25s ease; }
+    .toast.success { background: var(--success-green); }
+    .toast.danger { background: var(--danger-red); }
+    @keyframes toastIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .toast.leaving { animation: toastOut .25s ease forwards; }
+    @keyframes toastOut { to { opacity: 0; transform: translateX(20px); } }
+  </style>
+  <script src="airtouch_store.js"></script>
+</head>
+<body>
+
+  <aside class="sidebar">
+    <div class="brand-header">
+      <i class="fa-solid fa-wifi"></i>
+      <h2>AIR TOUCH ERP</h2>
+    </div>
+
+    <nav class="nav-menu">
+      <div class="menu-group">
+        <div class="menu-header" onclick="location.href='dashboard.html'">
+          <div class="menu-header-title"><i class="fa-solid fa-house"></i> 🏠 Dashboard</div>
+        </div>
+      </div>
+
+      <div class="menu-group open">
+        <div class="menu-header" onclick="toggleMenu(this)">
+          <div class="menu-header-title"><i class="fa-solid fa-boxes-stacked"></i> 📦 Inventory</div>
+          <i class="fa-solid fa-chevron-right arrow-icon"></i>
+        </div>
+        <div class="tree-sub">
+          <div class="tree-item active">Store Stock</div>
+          <div class="tree-item" onclick="location.href='purchase.html'">Purchase</div>
+          <div class="tree-item" onclick="location.href='dispatch.html'">Dispatch</div>
+          <div class="tree-item" onclick="location.href='ledger.html'">Ledger</div>
+        </div>
+      </div>
+
+      <div class="menu-group">
+        <div class="menu-header" onclick="toggleMenu(this)">
+          <div class="menu-header-title"><i class="fa-solid fa-wrench"></i> 🔧 Installation</div>
+          <i class="fa-solid fa-chevron-right arrow-icon"></i>
+        </div>
+        <div class="tree-sub">
+          <div class="tree-item" onclick="location.href='installation.html'">New Installation</div>
+          <div class="tree-item" onclick="location.href='installation.html'">Installation List</div>
+          <div class="tree-item" onclick="location.href='installation.html'">Returned Material</div>
+          <div class="tree-item" onclick="location.href='installation_exchange.html'">Installation Exchange</div>
+        </div>
+      </div>
+
+      <div class="menu-group">
+        <div class="menu-header" onclick="toggleMenu(this)">
+          <div class="menu-header-title"><i class="fa-solid fa-chart-pie"></i> 📊 Reports</div>
+          <i class="fa-solid fa-chevron-right arrow-icon"></i>
+        </div>
+        <div class="tree-sub">
+          <div class="tree-item">Daily Summary</div>
+          <div class="tree-item">Monthly Report</div>
+          <div class="tree-item">City Wise Stock</div>
+        </div>
+      </div>
+
+      <div class="menu-group">
+        <div class="menu-header" onclick="location.href='employees.html'"><div class="menu-header-title"><i class="fa-solid fa-users"></i> 👨 Employees</div></div>
+      </div>
+
+      <div class="menu-group">
+        <div class="menu-header" onclick="location.href='settings.html'"><div class="menu-header-title"><i class="fa-solid fa-gear"></i> ⚙ Settings</div></div>
+      </div>
+    </nav>
+  </aside>
+
+  <main class="main-wrapper">
+
+    <header class="top-bar">
+      <div class="global-search">
+        <i class="fa-solid fa-magnifying-glass" style="color:var(--text-muted);"></i>
+        <input type="text" id="searchInput" placeholder="🔍 Search Item / Category / Code...">
+      </div>
+
+      <div class="top-right">
+        <div class="bell-icon" title="Notifications" id="bellBtn">
+          <i class="fa-solid fa-bell"></i>
+          <span class="bell-badge" id="bellBadge">3</span>
+        </div>
+        <div style="font-size:11px; font-weight:700; color:var(--primary-blue);">
+          <i class="fa-solid fa-user-circle"></i> Admin Profile
+        </div>
+      </div>
+    </header>
+
+    <section class="header-section">
+      <div class="breadcrumbs">
+        <span>Dashboard</span> &gt; <span>Inventory</span> &gt; <span class="active">Store Stock</span>
+      </div>
+
+      <div class="action-toolbar">
+        <button class="btn btn-purple" id="addItemBtn"><i class="fa-solid fa-plus"></i> ➕ Add Item</button>
+        <button class="btn btn-outline" id="importBtn"><i class="fa-solid fa-file-import"></i> 📥 Import Excel</button>
+        <input type="file" id="importFileInput" accept=".xlsx,.xls,.csv" style="display:none;">
+        <button class="btn btn-outline" id="exportBtn"><i class="fa-solid fa-file-export"></i> 📤 Export Excel</button>
+        <button class="btn btn-outline" id="printBtn"><i class="fa-solid fa-print"></i> 🖨 Print</button>
+        <button class="btn btn-outline" id="refreshBtn"><i class="fa-solid fa-rotate"></i> 🔄 Refresh</button>
+        <button class="btn btn-danger" id="clearDataBtn"><i class="fa-solid fa-trash-can"></i> 🗑 Clear Data</button>
+      </div>
+    </section>
+
+    <div class="content-body">
+
+      <section class="metrics-grid" id="metricsGrid">
+        <div class="metric-card"><label>📦 Total Stock</label><h3 id="mTotalStock">0</h3></div>
+        <div class="metric-card"><label>💰 Total Price</label><h3 style="color:var(--success-green);" id="mInvValue">PKR 0</h3></div>
+      </section>
+
+      <div class="dashboard-grid">
+
+        <section class="panel-card">
+          <div class="panel-header">
+            <h3><i class="fa-solid fa-table"></i> Store Items Inventory</h3>
+            <span style="font-size:10px; color:var(--text-muted);">Real-time Stock Control</span>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Code</th>
+                <th>Item Name</th>
+                <th>Category</th>
+                <th>Stock</th>
+                <th>Purchase</th>
+                <th>Sale</th>
+                <th>Total Price</th>
+                <th>Last Updated</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="itemsBody"></tbody>
+          </table>
+        </section>
+
+        <section class="panel-card">
+          <div class="panel-header">
+            <h3><i class="fa-solid fa-clock"></i> Today's Activity Timeline</h3>
+          </div>
+
+          <div class="timeline" id="timelineList">
+            <div class="timeline-item">
+              <span class="time-badge">09:10</span>
+              <div>
+                <strong>Purchase Added</strong>
+                <p style="color:var(--text-muted); font-size:10px;">+100x ZTE ONU Modems Received</p>
+              </div>
+            </div>
+            <div class="timeline-item">
+              <span class="time-badge">09:45</span>
+              <div>
+                <strong>Dispatch to BTK</strong>
+                <p style="color:var(--text-muted); font-size:10px;">Sent 10x Modems & 500m Wire</p>
+              </div>
+            </div>
+            <div class="timeline-item">
+              <span class="time-badge">10:30</span>
+              <div>
+                <strong>Installation Completed</strong>
+                <p style="color:var(--text-muted); font-size:10px;">User: dhr825 (TLS) • Rs. 9,400</p>
+              </div>
+            </div>
+            <div class="timeline-item">
+              <span class="time-badge">11:15</span>
+              <div>
+                <strong>Stock Updated</strong>
+                <p style="color:var(--text-muted); font-size:10px;">12V Adapter Price Changed by Bilal</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </div>
+
+    </div>
+  </main>
+
+  <!-- ADD / EDIT ITEM MODAL -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal-box">
+      <h3 id="modalTitle">Add New Item</h3>
+      <label>Item Code</label>
+      <input type="text" id="mCode" placeholder="e.g. ITM-05">
+      <label>Item Name</label>
+      <input type="text" id="mName" placeholder="e.g. TP-Link Router">
+      <label>Category</label>
+      <input type="text" id="mCategory" placeholder="e.g. Router">
+      <div class="modal-row">
+        <div>
+          <label>Stock Qty</label>
+          <input type="number" id="mStock" value="0">
+        </div>
+        <div>
+          <label>Unit</label>
+          <input type="text" id="mUnit" value="Pcs">
+        </div>
+      </div>
+      <div class="modal-row">
+        <div>
+          <label>Purchase Price</label>
+          <input type="number" id="mPurchase" value="0">
+        </div>
+        <div>
+          <label>Sale Price</label>
+          <input type="number" id="mSale" value="0">
+        </div>
+      </div>
+      <label>Last Updated</label>
+      <input type="date" id="mUpdated">
+      <div class="modal-actions">
+        <button class="btn btn-outline" id="modalCancelBtn">Cancel</button>
+        <button class="btn btn-purple" id="modalSaveBtn">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-stack" id="toastStack"></div>
+
+  <script>
+    function toggleMenu(element) {
+      element.parentElement.classList.toggle('open');
+    }
+
+    /* ---------------- SHARED CENTRAL STORE (single source of truth) ---------------- */
+    // `items` used to be defined twice (once as a function, once reassigned to a
+    // plain array from a legacy localStorage key) which is why Add/Edit/Delete
+    // above could silently stop touching AirTouchStore. Now every read goes
+    // through this one getter, and every write goes through AirTouchStore's
+    // own CRUD methods so all pages (purchase.html, dispatch.html, ledger.html)
+    // stay in sync.
+    function items() { return AirTouchStore.getItems(); }
+    let editingCode = null;
+
+    // Formats any date-ish value (Date object, ISO string, or empty) into YYYY-MM-DD for display/export.
+    function toISODate(value){
+      if (!value) return new Date().toISOString().slice(0,10);
+      if (value instanceof Date && !isNaN(value)) return value.toISOString().slice(0,10);
+      const parsed = new Date(value);
+      return isNaN(parsed) ? new Date().toISOString().slice(0,10) : parsed.toISOString().slice(0,10);
+    }
+
+    function statusOf(stock){
+      if (stock <= 5) return { cls:'badge-danger', label:'🔴 Out' };
+      if (stock <= 20) return { cls:'badge-warning', label:'🟡 Low' };
+      return { cls:'badge-success', label:'🟢 Normal' };
+    }
+
+    function renderItems(filter){
+      const body = document.getElementById('itemsBody');
+      const q = (filter || '').toLowerCase();
+      const rows = items().filter(it =>
+        !q || it.code.toLowerCase().includes(q) || it.name.toLowerCase().includes(q) || it.category.toLowerCase().includes(q)
+      );
+      body.innerHTML = rows.map(it => {
+        const s = statusOf(it.stock);
+        return `<tr data-code="${it.code}">
+          <td><code>${it.code}</code></td>
+          <td><strong>${it.name}</strong></td>
+          <td>${it.category}</td>
+          <td><strong>${it.stock.toLocaleString()} ${it.unit}</strong></td>
+          <td style="${it.purchase <= 0 ? 'color:var(--danger-red); font-weight:700;' : ''}">${it.purchase.toLocaleString()}${it.purchase <= 0 ? ' ⚠️' : ''}</td>
+          <td style="${it.sale <= 0 ? 'color:var(--danger-red); font-weight:700;' : ''}">${it.sale.toLocaleString()}${it.sale <= 0 ? ' ⚠️' : ''}</td>
+          <td><strong>${(it.stock * it.purchase).toLocaleString()}</strong></td>
+          <td>${toISODate(it.updated)}</td>
+          <td><span class="${s.cls}">${s.label}</span></td>
+          <td>
+            <div class="row-actions">
+              <button class="btn-icon" title="View" data-action="view"><i class="fa-solid fa-eye"></i></button>
+              <button class="btn-icon" title="Edit" data-action="edit"><i class="fa-solid fa-pen"></i></button>
+              <button class="btn-icon" title="History" data-action="history"><i class="fa-solid fa-clock-rotate-left"></i></button>
+              <button class="btn-icon" style="color:var(--danger-red)" title="Delete" data-action="delete"><i class="fa-solid fa-trash"></i></button>
+            </div>
+          </td>
+        </tr>`;
+      }).join('') || `<tr><td colspan="10" style="text-align:center; color:var(--text-muted); padding:16px;">No items match your search</td></tr>`;
+
+      body.querySelectorAll('button[data-action]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const code = btn.closest('tr').dataset.code;
+          const action = btn.dataset.action;
+          if (action === 'edit') openModal(code);
+          else if (action === 'delete') deleteItem(code);
+          else if (action === 'view') showToast(`Viewing ${code} — full detail page coming soon`, '');
+          else if (action === 'history') location.href = 'ledger.html';
+        });
+      });
+
+      updateMetrics();
+    }
+
+    function updateMetrics(){
+      const totalStock = items().reduce((s,i) => s + i.stock, 0);
+      const invValue = items().reduce((s,i) => s + i.stock * i.purchase, 0);
+      document.getElementById('mTotalStock').textContent = totalStock.toLocaleString() + ' Pcs';
+      document.getElementById('mInvValue').textContent = 'PKR ' + (invValue >= 1000000 ? (invValue/1000000).toFixed(1)+'M' : invValue.toLocaleString());
+    }
+
+    /* ---------------- SEARCH ---------------- */
+    document.getElementById('searchInput').addEventListener('input', (e) => renderItems(e.target.value));
+
+    /* ---------------- ADD / EDIT MODAL ---------------- */
+    const overlay = document.getElementById('modalOverlay');
+    function openModal(code){
+      editingCode = code || null;
+      document.getElementById('modalTitle').textContent = code ? 'Edit Item' : 'Add New Item';
+      if (code){
+        const it = items().find(i => i.code === code);
+        document.getElementById('mCode').value = it.code;
+        document.getElementById('mCode').disabled = true;
+        document.getElementById('mName').value = it.name;
+        document.getElementById('mCategory').value = it.category;
+        document.getElementById('mStock').value = it.stock;
+        document.getElementById('mUnit').value = it.unit;
+        document.getElementById('mPurchase').value = it.purchase;
+        document.getElementById('mSale').value = it.sale;
+        document.getElementById('mUpdated').value = toISODate(it.updated);
+      } else {
+        document.getElementById('mCode').disabled = false;
+        ['mCode','mName','mCategory'].forEach(id => document.getElementById(id).value = '');
+        document.getElementById('mStock').value = 0;
+        document.getElementById('mUnit').value = 'Pcs';
+        document.getElementById('mPurchase').value = 0;
+        document.getElementById('mSale').value = 0;
+        document.getElementById('mUpdated').value = toISODate(new Date());
+      }
+      overlay.classList.add('show');
+    }
+    document.getElementById('addItemBtn').onclick = () => openModal(null);
+    document.getElementById('modalCancelBtn').onclick = () => overlay.classList.remove('show');
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('show'); });
+
+    document.getElementById('modalSaveBtn').onclick = () => {
+      const code = document.getElementById('mCode').value.trim();
+      const name = document.getElementById('mName').value.trim();
+      const category = document.getElementById('mCategory').value.trim() || 'Uncategorized';
+      const stock = parseInt(document.getElementById('mStock').value || 0);
+      const unit = document.getElementById('mUnit').value.trim() || 'Pcs';
+      const purchase = parseFloat(document.getElementById('mPurchase').value || 0);
+      const sale = parseFloat(document.getElementById('mSale').value || 0);
+      const updated = document.getElementById('mUpdated').value || toISODate(new Date());
+
+      if (!code || !name){ showToast('Item code and name are required', 'danger'); return; }
+
+      if (purchase <= 0 || sale <= 0){
+        showToast('Purchase Price aur Sale Price 0 se zyada honi chahiye — item save nahi hoga jab tak dono fields bhar dein.', 'danger');
+        return;
+      }
+
+      if (editingCode){
+        const it = items().find(i => i.code === editingCode);
+        AirTouchStore.updateItem(it.id, { name, category, stock: Number(stock), unit, purchase: Number(purchase), sale: Number(sale), updated });
+        showToast(`${code} updated`, 'success');
+      } else {
+        if (items().some(i => i.code === code)){ showToast('Item code already exists', 'danger'); return; }
+        AirTouchStore.addItem({ code, name, category, stock: Number(stock), unit, purchase: Number(purchase), sale: Number(sale), updated });
+        showToast(`${code} added to inventory`, 'success');
+      }
+      overlay.classList.remove('show');
+      renderItems(document.getElementById('searchInput').value);
+    };
+
+    function deleteItem(code){
+      const row = document.querySelector(`tr[data-code="${code}"]`);
+      if (row) row.classList.add('removing');
+      setTimeout(() => {
+        const it = items().find(i => i.code === code);
+        if (it) AirTouchStore.deleteItem(it.id);
+        renderItems(document.getElementById('searchInput').value);
+        showToast(`${code} deleted`, 'danger');
+      }, 200);
+    }
+
+    /* ---------------- TOOLBAR ---------------- */
+    document.getElementById('refreshBtn').onclick = () => { renderItems(''); document.getElementById('searchInput').value=''; showToast('Inventory refreshed', 'success'); };
+
+    document.getElementById('clearDataBtn').onclick = () => {
+      if (!items().length) { showToast('Store Stock is already empty', ''); return; }
+      if (!confirm('Clear all Store Stock items? This only clears this table in your browser and cannot be undone.')) return;
+      AirTouchStore.resetAll();
+      renderItems('');
+      document.getElementById('searchInput').value = '';
+      showToast('Store Stock table cleared', 'danger');
+    };
+    document.getElementById('printBtn').onclick = () => window.print();
+
+    /* ---------------- EXPORT (styled .xlsx — branded banner, colored header, banded rows, low-stock highlight, totals) ---------------- */
+    document.getElementById('exportBtn').onclick = () => {
+      const list = items();
+      const COLS = 8; // Item Code, Item Name, Category, Stock Qty, Unit, Purchase Price, Sale Price, Last Updated
+      const HEADERS = ['Item Code', 'Item Name', 'Category', 'Stock Qty', 'Unit', 'Purchase Price', 'Sale Price', 'Last Updated'];
+
+      // Brand palette pulled from this page's own CSS variables, so the exported
+      // file visually matches the app instead of looking like a generic dump.
+      const NAVY = '146C2E', ORANGE = 'D97706', RED = 'DC2626', BAND = 'F0F4F8', WHITE = 'FFFFFF', TEXT_DARK = '1E293B', BORDER = 'CBD5E1';
+
+      const thinBorder = { style: 'thin', color: { rgb: BORDER } };
+      const borderAll = { top: thinBorder, bottom: thinBorder, left: thinBorder, right: thinBorder };
+
+      const titleStyle = { font: { name: 'Calibri', sz: 16, bold: true, color: { rgb: WHITE } }, fill: { fgColor: { rgb: NAVY } }, alignment: { horizontal: 'center', vertical: 'center' } };
+      const subtitleStyle = { font: { name: 'Calibri', sz: 10, italic: true, color: { rgb: '64748B' } }, alignment: { horizontal: 'center' } };
+      const headerStyle = { font: { name: 'Calibri', sz: 11, bold: true, color: { rgb: WHITE } }, fill: { fgColor: { rgb: NAVY } }, alignment: { horizontal: 'center', vertical: 'center' }, border: borderAll };
+      const totalStyle = { font: { name: 'Calibri', sz: 11, bold: true, color: { rgb: WHITE } }, fill: { fgColor: { rgb: NAVY } }, alignment: { horizontal: 'center', vertical: 'center' }, border: borderAll };
+
+      function rowStyle(bandFill, lowStock, colIndex){
+        const isNumericCol = colIndex === 3 || colIndex === 5 || colIndex === 6;
+        return {
+          font: { name: 'Calibri', sz: 10.5, color: { rgb: lowStock && colIndex === 3 ? RED : TEXT_DARK }, bold: !!(lowStock && colIndex === 3) },
+          fill: { fgColor: { rgb: lowStock ? 'FEF3E2' : (bandFill ? BAND : WHITE) } },
+          alignment: { horizontal: isNumericCol ? 'center' : (colIndex === 1 ? 'left' : 'center'), vertical: 'center' },
+          border: borderAll,
+        };
+      }
+
+      const aoa = [];
+      aoa.push(['Air Touch Enterprise — Store Inventory Report', '', '', '', '', '', '', '']);
+      aoa.push([`Generated on ${toISODate(new Date())}  •  ${list.length} items`, '', '', '', '', '', '', '']);
+      aoa.push(HEADERS);
+      list.forEach(i => {
+        aoa.push([i.code, i.name, i.category, i.stock, i.unit, i.purchase, i.sale, new Date(toISODate(i.updated))]);
+      });
+      const totalStock = list.reduce((s, i) => s + (Number(i.stock) || 0), 0);
+      const totalPurchaseValue = list.reduce((s, i) => s + (Number(i.stock) || 0) * (Number(i.purchase) || 0), 0);
+      const totalSaleValue = list.reduce((s, i) => s + (Number(i.stock) || 0) * (Number(i.sale) || 0), 0);
+      const totalsRowIndex = 3 + list.length;
+      aoa.push(['TOTAL', '', '', totalStock, '', totalPurchaseValue, totalSaleValue, '']);
+
+      const worksheet = XLSX.utils.aoa_to_sheet(aoa);
+      worksheet['!cols'] = [{wch:12},{wch:26},{wch:14},{wch:10},{wch:8},{wch:15},{wch:13},{wch:14}];
+      worksheet['!rows'] = [{hpt:26},{hpt:16}];
+      worksheet['!merges'] = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: COLS - 1 } },
+        { s: { r: 1, c: 0 }, e: { r: 1, c: COLS - 1 } },
+      ];
+      worksheet['!freeze'] = { xSplit: 0, ySplit: 3 }; // header row stays visible while scrolling
+      worksheet['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 2, c: 0 }, e: { r: totalsRowIndex - 1, c: COLS - 1 } }) };
+
+      // Title + subtitle banner
+      for (let c = 0; c < COLS; c++) {
+        const t = XLSX.utils.encode_cell({ r: 0, c });
+        if (worksheet[t]) worksheet[t].s = titleStyle;
+        const s = XLSX.utils.encode_cell({ r: 1, c });
+        if (worksheet[s]) worksheet[s].s = subtitleStyle;
+      }
+      // Header row
+      for (let c = 0; c < COLS; c++) {
+        const ref = XLSX.utils.encode_cell({ r: 2, c });
+        if (worksheet[ref]) worksheet[ref].s = headerStyle;
+      }
+      // Data rows — banded fill + red highlight for low stock (<=20, matches the on-screen badge rule)
+      list.forEach((item, idx) => {
+        const r = 3 + idx;
+        const low = item.stock <= 20;
+        for (let c = 0; c < COLS; c++) {
+          const ref = XLSX.utils.encode_cell({ r, c });
+          if (!worksheet[ref]) continue;
+          worksheet[ref].s = rowStyle(idx % 2 === 1, low, c);
+          if (c === 5 || c === 6) worksheet[ref].z = '#,##0';       // currency-style thousands separator
+          if (c === 7) worksheet[ref].z = 'yyyy-mm-dd';              // clean date, not a raw serial number
+        }
+      });
+      // Totals row
+      for (let c = 0; c < COLS; c++) {
+        const ref = XLSX.utils.encode_cell({ r: totalsRowIndex, c });
+        if (!worksheet[ref]) continue;
+        worksheet[ref].s = totalStyle;
+        if (c === 5 || c === 6) worksheet[ref].z = '#,##0';
+      }
+
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Store Inventory');
+      XLSX.writeFile(workbook, `store_inventory_export_${toISODate(new Date())}.xlsx`);
+      showToast('Inventory exported as a designed Excel (.xlsx)', 'success');
+    };
+
+    /* ---------------- IMPORT (order-independent, header-matched, date-safe) ---------------- */
+    // Recognized header aliases -> canonical field name. Matching is
+    // case-insensitive and ignores spaces/underscores, so "item_code",
+    // "Item Code", "CODE" all resolve to the same field regardless of
+    // which column position they appear in.
+    const HEADER_ALIASES = {
+      code:        ['itemcode', 'code', 'sku', 'itemid'],
+      name:        ['itemname', 'name', 'description', 'product'],
+      category:    ['category', 'type', 'group'],
+      stock:       ['stockqty', 'stock', 'qty', 'quantity', 'availablestock'],
+      unit:        ['unit', 'uom'],
+      purchase:    ['purchaseprice', 'purchase', 'cost', 'unitcost'],
+      sale:        ['saleprice', 'sale', 'price', 'sellingprice'],
+      updated:     ['lastupdated', 'updated', 'date', 'updateddate', 'lastupdateddate'],
+    };
+    function normalizeHeader(h){
+      return String(h || '').toLowerCase().replace(/[\s_\-]/g, '');
+    }
+    function buildFieldMap(headerRow){
+      const map = {}; // column index -> canonical field
+      headerRow.forEach((raw, idx) => {
+        const norm = normalizeHeader(raw);
+        for (const [field, aliases] of Object.entries(HEADER_ALIASES)) {
+          if (aliases.includes(norm)) { map[idx] = field; break; }
+        }
+      });
+      return map;
+    }
+    // Handles Excel's numeric date serials, JS Date objects (from cellDates),
+    // and plain text dates - always returns a clean YYYY-MM-DD string.
+    function parseImportedDate(value){
+      if (value instanceof Date && !isNaN(value)) return toISODate(value);
+      if (typeof value === 'number') {
+        const parsed = XLSX.SSF.parse_date_code(value);
+        if (parsed) return toISODate(new Date(Date.UTC(parsed.y, parsed.m - 1, parsed.d)));
+      }
+      if (typeof value === 'string' && value.trim()) return toISODate(value.trim());
+      return toISODate(new Date());
+    }
+
+    document.getElementById('importBtn').onclick = () => document.getElementById('importFileInput').click();
+
+    document.getElementById('importFileInput').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        try {
+          const workbook = XLSX.read(evt.target.result, { type: 'array', cellDates: true });
+          const sheet = workbook.Sheets[workbook.SheetNames[0]];
+          // header:1 -> array of arrays, so we control header matching ourselves
+          // instead of trusting column order.
+          const grid = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true, defval: '' });
+          if (!grid.length) { showToast('That file has no rows to import', 'danger'); return; }
+
+          const fieldMap = buildFieldMap(grid[0]);
+          if (!Object.values(fieldMap).includes('code') || !Object.values(fieldMap).includes('name')) {
+            showToast('Import failed: could not find "Item Code" and "Item Name" columns', 'danger');
+            return;
+          }
+
+          let added = 0, updated = 0, skipped = 0;
+          for (let r = 1; r < grid.length; r++) {
+            const row = grid[r];
+            if (!row || row.every(c => c === '' || c === null || c === undefined)) continue;
+
+            const rec = {};
+            Object.entries(fieldMap).forEach(([idx, field]) => { rec[field] = row[idx]; });
+
+            const code = String(rec.code || '').trim();
+            const name = String(rec.name || '').trim();
+            if (!code || !name) { skipped++; continue; }
+
+            const parsedItem = {
+              code,
+              name,
+              category: String(rec.category || 'Uncategorized').trim(),
+              stock: parseInt(rec.stock) || 0,
+              unit: String(rec.unit || 'Pcs').trim(),
+              purchase: parseFloat(rec.purchase) || 0,
+              sale: parseFloat(rec.sale) || 0,
+              updated: parseImportedDate(rec.updated),
+            };
+
+            const existing = items().find(i => i.code === code);
+            if (existing) { AirTouchStore.updateItem(existing.id, parsedItem); updated++; }
+            else { AirTouchStore.addItem(parsedItem); added++; }
+          }
+
+          renderItems(document.getElementById('searchInput').value);
+          showToast(`Import done — ${added} added, ${updated} updated${skipped ? `, ${skipped} skipped` : ''}`, 'success');
+        } catch (err) {
+          showToast('Import failed: file could not be read as Excel/CSV', 'danger');
+        } finally {
+          e.target.value = ''; // allow re-selecting the same file later
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    });
+
+    /* ---------------- NOTIFICATIONS ---------------- */
+    document.getElementById('bellBtn').onclick = () => {
+      document.getElementById('bellBadge').style.display = 'none';
+      showToast('3 low-stock alerts reviewed', '');
+    };
+
+    /* ---------------- TOASTS ---------------- */
+    function showToast(msg, kind){
+      const stack = document.getElementById('toastStack');
+      const t = document.createElement('div');
+      t.className = `toast ${kind||''}`;
+      t.innerHTML = `<i class="fa-solid fa-circle-check"></i> ${msg}`;
+      stack.appendChild(t);
+      setTimeout(() => { t.classList.add('leaving'); setTimeout(() => t.remove(), 250); }, 2600);
+    }
+
+    /* ---------------- INIT ---------------- */
+    renderItems('');
+  </script>
+
+</body>
+</html>

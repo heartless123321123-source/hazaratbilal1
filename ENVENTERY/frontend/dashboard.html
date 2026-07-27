@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="ur" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Air Touch Enterprise Suite</title>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- xlsx-js-style: SheetJS-compatible (same global XLSX, same read/import API) but also
+     writes real cell styling (fills, fonts, borders) into the .xlsx file, which the plain
+     cdnjs 'xlsx' build cannot do — this is what makes the Export button's file look designed. -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+<style>
+  :root {
+    --primary-blue: #0A3663;
+    --hover-blue: #0E4782;
+    --success-green: #208B3A;
+    --light-green: #2DC653;
+    --warning-orange: #D97706;
+    --danger-red: #DC2626;
+    --bg-gray: #F0F4F8;
+    --card-bg: #FFFFFF;
+    --text-dark: #1E293B;
+    --text-muted: #64748B;
+    --border-color: #CBD5E1;
+  }
+  [data-theme="dark"] {
+    --bg-gray: #0F1A2B;
+    --card-bg: #16233A;
+    --text-dark: #E2E8F0;
+    --text-muted: #94A3B8;
+    --border-color: #26374F;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
+  body { background-color: var(--bg-gray); color: var(--text-dark); display: flex; height: 100vh; overflow: hidden; transition: background-color .25s ease, color .25s ease; }
+
+  /* SIDEBAR */
+  .sidebar { width: 240px; background: var(--primary-blue); color: #ffffff; display: flex; flex-direction: column; }
+  .brand-header { padding: 14px 16px; background: rgba(0, 0, 0, 0.25); border-bottom: 4px solid var(--light-green); display: flex; align-items: center; gap: 10px; }
+  .brand-header h2 { font-size: 14px; font-weight: 800; }
+  .brand-header i { animation: pulseWifi 2.4s ease-in-out infinite; }
+  @keyframes pulseWifi { 0%,100% { opacity: 1; } 50% { opacity: .45; } }
+
+  .nav-menu { padding: 8px; display: flex; flex-direction: column; gap: 2px; }
+  .menu-item { padding: 8px 12px; color: #FFFFFF; font-size: 11px; font-weight: 700; border-radius: 5px; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: background .15s ease, padding-left .15s ease; }
+  .menu-item:hover { padding-left: 16px; }
+  .menu-item:hover, .menu-item.active { background: var(--hover-blue); }
+  .menu-item .badge { margin-left: auto; background: var(--danger-red); font-size: 9px; padding: 1px 6px; border-radius: 10px; }
+
+  /* MAIN WRAPPER */
+  .main-wrapper { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; }
+
+  .top-bar { background: var(--card-bg); padding: 8px 20px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; transition: background-color .25s ease, border-color .25s ease; }
+  .universal-search { display: flex; align-items: center; background: var(--bg-gray); border: 1px solid var(--border-color); border-radius: 6px; padding: 6px 12px; width: 500px; gap: 8px; position: relative; }
+  .universal-search input { border: none; background: transparent; outline: none; font-size: 11px; width: 100%; color: var(--text-dark); }
+
+  .search-results { position: absolute; top: 38px; left: 0; width: 100%; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 6px; box-shadow: 0 8px 20px rgba(0,0,0,.15); max-height: 260px; overflow-y: auto; display: none; z-index: 200; }
+  .search-results.show { display: block; }
+  .search-result-item { padding: 8px 12px; font-size: 11px; border-bottom: 1px solid var(--border-color); cursor: pointer; display: flex; justify-content: space-between; }
+  .search-result-item:hover { background: var(--bg-gray); }
+  .search-result-item small { color: var(--text-muted); }
+  .search-empty { padding: 14px; font-size: 11px; color: var(--text-muted); text-align: center; }
+
+  .top-right { display: flex; align-items: center; gap: 16px; font-size: 12px; position: relative; }
+  .icon-btn { cursor: pointer; position: relative; transition: transform .15s ease; }
+  .icon-btn:hover { transform: scale(1.15); }
+  .notif-dot { position: absolute; top: -4px; right: -6px; width: 8px; height: 8px; background: var(--danger-red); border-radius: 50%; border: 2px solid var(--card-bg); }
+
+  .notif-panel { position: absolute; top: 30px; right: 60px; width: 280px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 8px 20px rgba(0,0,0,.18); display: none; z-index: 300; }
+  .notif-panel.show { display: block; }
+  .notif-panel-header { padding: 10px 12px; font-size: 11px; font-weight: 800; border-bottom: 1px solid var(--border-color); color: var(--primary-blue); }
+  .notif-item { padding: 8px 12px; font-size: 10px; border-bottom: 1px solid var(--border-color); }
+  .notif-item b { color: var(--text-dark); }
+  .notif-item span { color: var(--text-muted); display: block; margin-top: 2px; }
+
+  .content-body { flex: 1; padding: 12px 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+
+  /* KPI CARDS */
+  .kpi-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+  .kpi-card { background: var(--card-bg); border-radius: 5px; padding: 8px; border: 1px solid var(--border-color); transition: transform .15s ease, box-shadow .15s ease; }
+  .kpi-card:hover { transform: translateY(-3px); box-shadow: 0 6px 14px rgba(0,0,0,.1); }
+  .kpi-card label { font-size: 8px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; }
+  .kpi-card h3 { font-size: 14px; font-weight: 800; color: var(--primary-blue); }
+
+  .table-toolbar { background: var(--card-bg); padding: 6px 12px; border: 1px solid var(--border-color); border-radius: 6px 6px 0 0; display: flex; gap: 6px; align-items: center; }
+  .btn { padding: 5px 10px; border-radius: 4px; font-size: 10px; font-weight: 700; border: 1px solid var(--border-color); background: var(--bg-gray); color: var(--text-dark); cursor: pointer; display: inline-flex; align-items: center; gap: 4px; transition: filter .15s ease, transform .1s ease; }
+  .btn:hover { filter: brightness(0.95); }
+  .btn:active { transform: scale(0.96); }
+  .btn-primary { background: var(--primary-blue); color: white; border: none; }
+  .toolbar-hint { margin-left: auto; font-size: 9px; color: var(--text-muted); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 11px; background: var(--card-bg); }
+  thead th { background: var(--primary-blue); color: white; text-align: left; padding: 8px; font-weight: 600; cursor: pointer; user-select: none; }
+  thead th:hover { background: var(--hover-blue); }
+  tbody td { padding: 8px; border-bottom: 1px solid var(--border-color); }
+  tbody tr { cursor: pointer; transition: filter .12s ease; }
+  tbody tr:hover { filter: brightness(0.97); }
+  tbody tr.removing { animation: fadeOut .25s ease forwards; }
+  @keyframes fadeOut { to { opacity: 0; transform: scale(.98); } }
+
+  tr.status-available { background-color: #F0FDF4; }
+  tr.status-low { background-color: #FEFCE8; }
+  tr.status-out { background-color: #FEF2F2; }
+  [data-theme="dark"] tr.status-available { background-color: #0F2A1A; }
+  [data-theme="dark"] tr.status-low { background-color: #2A2510; }
+  [data-theme="dark"] tr.status-out { background-color: #2A1414; }
+
+  .right-panel { position: absolute; right: -350px; top: 0; width: 340px; height: 100%; background: var(--card-bg); border-left: 2px solid var(--border-color); box-shadow: -4px 0 12px rgba(0,0,0,0.15); transition: right 0.3s ease; z-index: 100; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .right-panel.open { right: 0; }
+  .panel-close { align-self: flex-end; cursor: pointer; font-size: 16px; }
+
+  .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .chart-card { background: var(--card-bg); border-radius: 6px; border: 1px solid var(--border-color); padding: 10px; }
+
+  /* MODAL */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(15,26,43,.55); display: none; align-items: center; justify-content: center; z-index: 500; }
+  .modal-overlay.show { display: flex; }
+  .modal-box { background: var(--card-bg); width: 360px; border-radius: 8px; padding: 18px; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 20px 50px rgba(0,0,0,.3); animation: modalPop .18s ease; }
+  @keyframes modalPop { from { transform: scale(.94); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .modal-box h3 { color: var(--primary-blue); font-size: 13px; }
+  .modal-box label { font-size: 10px; font-weight: 700; color: var(--text-muted); }
+  .modal-box input, .modal-box select { padding: 6px 8px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 11px; background: var(--bg-gray); color: var(--text-dark); }
+  .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
+
+  /* TOASTS */
+  .toast-stack { position: fixed; bottom: 18px; right: 18px; display: flex; flex-direction: column; gap: 8px; z-index: 999; }
+  .toast { background: var(--primary-blue); color: white; padding: 10px 16px; border-radius: 6px; font-size: 11px; font-weight: 700; box-shadow: 0 8px 20px rgba(0,0,0,.25); display: flex; align-items: center; gap: 8px; animation: toastIn .25s ease; }
+  .toast.success { background: var(--success-green); }
+  .toast.danger { background: var(--danger-red); }
+  @keyframes toastIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  .toast.leaving { animation: toastOut .25s ease forwards; }
+  @keyframes toastOut { to { opacity: 0; transform: translateX(20px); } }
+</style>
+  <script src="airtouch_store.js"></script>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="brand-header">
+    <i class="fa-solid fa-wifi" style="color:var(--light-green)"></i>
+    <h2>AIR TOUCH ERP</h2>
+  </div>
+  <nav class="nav-menu">
+    <div class="menu-item active" data-tab="dashboard"><i class="fa-solid fa-house"></i> Dashboard</div>
+    <div class="menu-item" data-tab="inventory"><i class="fa-solid fa-boxes-stacked"></i> Inventory <span class="badge" id="lowStockBadge">3</span></div>
+    <div class="menu-item" data-tab="purchase"><i class="fa-solid fa-cart-shopping"></i> Purchase</div>
+    <div class="menu-item" data-tab="dispatch"><i class="fa-solid fa-truck-fast"></i> Dispatch</div>
+    <div class="menu-item" data-tab="ledger"><i class="fa-solid fa-book"></i> Ledger</div>
+    <div class="menu-item" data-tab="installation"><i class="fa-solid fa-wrench"></i> Installation</div>
+    <div class="menu-item" data-tab="installation_exchange"><i class="fa-solid fa-right-left"></i> Installation Exchange</div>
+    <div class="menu-item" data-tab="employees"><i class="fa-solid fa-users"></i> Employees</div>
+    <div class="menu-item" data-tab="customers"><i class="fa-solid fa-user-group"></i> Customers</div>
+    <div class="menu-item" data-tab="reports"><i class="fa-solid fa-chart-pie"></i> Reports</div>
+    <div class="menu-item" data-tab="settings"><i class="fa-solid fa-gear"></i> Settings</div>
+  </nav>
+</aside>
+
+<main class="main-wrapper">
+  <header class="top-bar">
+    <div class="universal-search">
+      <i class="fa-solid fa-magnifying-glass" style="color:var(--text-muted);"></i>
+      <input type="text" id="searchInput" placeholder="⚡ Universal Search: ONU, MGL607, Invoice 102, Supplier ABC, Bilal...">
+      <div class="search-results" id="searchResults"></div>
+    </div>
+    <div class="top-right">
+      <i class="fa-solid fa-moon icon-btn" id="darkModeBtn" title="Dark Mode"></i>
+      <i class="fa-solid fa-bell icon-btn" id="bellBtn" title="Notifications">
+        <span class="notif-dot" id="notifDot"></span>
+      </i>
+      <div class="notif-panel" id="notifPanel">
+        <div class="notif-panel-header">⚡ Recent Activity</div>
+        <div id="notifList"></div>
+      </div>
+      <span style="font-weight:700; color:var(--primary-blue);">👤 Bilal (Admin)</span>
+    </div>
+  </header>
+
+  <div class="content-body">
+    <section class="kpi-grid" id="kpiGrid">
+      <div class="kpi-card"><label>Total Stock</label><h3 id="kpiTotalStock">0</h3></div>
+      <div class="kpi-card"><label>Inventory Value</label><h3 style="color:var(--success-green);" id="kpiInvValue">PKR 0</h3></div>
+      <div class="kpi-card"><label>Today Purchase</label><h3 id="kpiTodayPurchase">+0</h3></div>
+      <div class="kpi-card"><label>Today Dispatch</label><h3 id="kpiTodayDispatch">-0</h3></div>
+      <div class="kpi-card"><label>Low Stock</label><h3 style="color:var(--danger-red);" id="lowStockKpi">0</h3></div>
+    </section>
+
+    <section class="charts-grid">
+      <div class="chart-card">
+        <span style="font-size:11px; font-weight:700; color:var(--primary-blue);">📈 Purchase vs Installation Trends</span>
+        <canvas id="chart1" height="110"></canvas>
+      </div>
+      <div class="chart-card">
+        <span style="font-size:11px; font-weight:700; color:var(--primary-blue);">📊 Monthly Net Profit (PKR)</span>
+        <canvas id="chart2" height="110"></canvas>
+      </div>
+    </section>
+
+    <section>
+      <div class="table-toolbar">
+        <button class="btn btn-primary" id="addBtn"><i class="fa-solid fa-plus"></i> Add</button>
+        <button class="btn" id="exportBtn"><i class="fa-solid fa-file-export"></i> Export</button>
+        <button class="btn" id="printBtn"><i class="fa-solid fa-print"></i> Print</button>
+        <button class="btn" id="refreshBtn"><i class="fa-solid fa-rotate"></i> Refresh</button>
+        <span class="toolbar-hint">Click a row for details · click column header to sort</span>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th data-key="item_code">Item Code</th>
+            <th data-key="item_name">Description</th>
+            <th data-key="status">Stock Status</th>
+            <th data-key="available_stock">Available</th>
+            <th data-key="category">Category</th>
+            <th data-key="sale_price">Price (PKR)</th>
+          </tr>
+        </thead>
+        <tbody id="itemsTableBody"></tbody>
+      </table>
+    </section>
+  </div>
+
+  <div id="rightDrawer" class="right-panel">
+    <i class="fa-solid fa-xmark panel-close" id="closeDrawerBtn"></i>
+    <h3 id="drawerTitle" style="color:var(--primary-blue);">Item Details</h3>
+    <div style="width:100%; height:120px; background:var(--bg-gray); border-radius:6px; display:flex; align-items:center; justify-content:center; color:var(--text-muted);">
+      <i class="fa-solid fa-image fa-2x"></i>
+    </div>
+    <div style="font-size:11px; display:flex; flex-direction:column; gap:8px;">
+      <p><strong>Code:</strong> <span id="drawerCode"></span></p>
+      <p><strong>Current Stock:</strong> <span id="drawerStock"></span></p>
+      <p><strong>Purchase Price:</strong> <span id="drawerPrice"></span></p>
+      <p><strong>Sale Price:</strong> <span id="drawerSale"></span></p>
+      <p><strong>Category:</strong> <span id="drawerSupplier"></span></p>
+      <div class="modal-actions">
+        <button class="btn" id="drawerDeleteBtn" style="color:var(--danger-red);"><i class="fa-solid fa-trash"></i> Delete</button>
+        <button class="btn btn-primary" id="drawerEditBtn"><i class="fa-solid fa-pen"></i> Edit</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- ADD / EDIT MODAL -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-box">
+    <h3 id="modalTitle">Add New Item</h3>
+    <label>Item Code</label>
+    <input type="text" id="mItemCode" placeholder="e.g. RTR-0010">
+    <label>Description</label>
+    <input type="text" id="mItemName" placeholder="e.g. TP-Link Router">
+    <label>Category</label>
+    <input type="text" id="mCategory" placeholder="e.g. Router">
+    <label>Available Stock</label>
+    <input type="number" id="mStock" value="0">
+    <label>Purchase Price (PKR)</label>
+    <input type="number" id="mPurchasePrice" value="0">
+    <label>Sale Price (PKR)</label>
+    <input type="number" id="mPrice" value="0">
+    <div class="modal-actions">
+      <button class="btn" id="modalCancelBtn">Cancel</button>
+      <button class="btn btn-primary" id="modalSaveBtn">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-stack" id="toastStack"></div>
+
+<script>
+/* ---------------- LIVE DATA (from shared AirTouchStore — same data as
+   Store Stock / Purchase / Dispatch / Ledger pages, always in sync) ---------------- */
+function toISODate(value){
+  if (!value) return new Date().toISOString().slice(0,10);
+  if (value instanceof Date && !isNaN(value)) return value.toISOString().slice(0,10);
+  const parsed = new Date(value);
+  return isNaN(parsed) ? new Date().toISOString().slice(0,10) : parsed.toISOString().slice(0,10);
+}
+
+// Maps AirTouchStore's item shape (code/name/stock/purchase/sale/category)
+// to the field names this page's table/drawer/modal already use, so the
+// rest of the page's logic below barely has to change.
+function items(){
+  return AirTouchStore.getItems().map(i => ({
+    item_code: i.code, item_name: i.name, available_stock: i.stock,
+    category: i.category, sale_price: i.sale, purchase_price: i.purchase,
+    unit: i.unit, _id: i.id
+  }));
+}
+
+const purchases = AirTouchStore.getPurchases(); // real purchase invoices
+const today = toISODate(new Date());
+
+// Recent activity = latest ledger entries (purchases + dispatches), newest first
+function buildActivity(){
+  return AirTouchStore.getLedger().slice(0, 8).map(r => ({
+    user: r.type === 'PURCHASE' ? (r.supplier || 'Supplier') : (r.employee || 'Staff'),
+    text: r.type === 'PURCHASE'
+      ? `+${r.qty} ${r.itemName} — Purchase (${r.reference})`
+      : `${Math.abs(r.qty)} ${r.itemName} dispatched to ${r.city || '—'}`,
+    time: r.date
+  }));
+}
+
+let sortKey = null, sortAsc = true, editingCode = null;
+
+function statusOf(it){
+  if (it.available_stock <= 0) return { cls:'status-out', label:'🔴 Out of Stock' };
+  if (it.available_stock <= 15) return { cls:'status-low', label:'🟡 Low Stock' };
+  return { cls:'status-available', label:'🟢 Available' };
+}
+
+function renderTable(){
+  const body = document.getElementById('itemsTableBody');
+  let rows = [...items()];
+  if (sortKey){
+    rows.sort((a,b) => {
+      let av = a[sortKey], bv = b[sortKey];
+      if (sortKey === 'status') { av = statusOf(a).label; bv = statusOf(b).label; }
+      if (typeof av === 'string') return sortAsc ? av.localeCompare(bv) : bv.localeCompare(av);
+      return sortAsc ? av - bv : bv - av;
+    });
+  }
+  body.innerHTML = rows.map(it => {
+    const s = statusOf(it);
+    return `<tr class="${s.cls}" data-code="${it.item_code}">
+      <td><code>${it.item_code}</code></td>
+      <td><strong>${it.item_name}</strong></td>
+      <td>${s.label}</td>
+      <td><strong>${it.available_stock.toLocaleString()} ${it.unit}</strong></td>
+      <td>${it.category}</td>
+      <td>${it.sale_price.toLocaleString()}</td>
+    </tr>`;
+  }).join('');
+  document.querySelectorAll('#itemsTableBody tr').forEach(tr => {
+    tr.addEventListener('click', () => openRightPanel(tr.dataset.code));
+  });
+  const lowCount = items().filter(i => i.available_stock <= 15).length;
+  document.getElementById('lowStockBadge').textContent = lowCount;
+  document.getElementById('lowStockKpi').textContent = lowCount;
+  updateKPIs();
+}
+
+document.querySelectorAll('thead th[data-key]').forEach(th => {
+  th.addEventListener('click', () => {
+    const key = th.dataset.key;
+    sortAsc = (sortKey === key) ? !sortAsc : true;
+    sortKey = key;
+    renderTable();
+  });
+});
+
+/* ---------------- KPI CARDS (real, live) ---------------- */
+function updateKPIs(){
+  const s = AirTouchStore.getStockSummary();
+  const ledgerToday = AirTouchStore.getLedger().filter(r => toISODate(r.date) === today);
+  const purchasedToday = ledgerToday.filter(r => r.type === 'PURCHASE').reduce((sum, r) => sum + r.qty, 0);
+  const dispatchedToday = ledgerToday.filter(r => r.type === 'DISPATCH').reduce((sum, r) => sum + Math.abs(r.qty), 0);
+
+  document.getElementById('kpiTotalStock').textContent = s.totalQty.toLocaleString() + ' Pcs';
+  document.getElementById('kpiInvValue').textContent = 'PKR ' + (s.totalValue >= 1000000 ? (s.totalValue/1000000).toFixed(1)+'M' : s.totalValue.toLocaleString());
+  document.getElementById('kpiTodayPurchase').textContent = '+' + purchasedToday.toLocaleString();
+  document.getElementById('kpiTodayDispatch').textContent = '-' + dispatchedToday.toLocaleString();
+  document.getElementById('lowStockKpi').textContent = s.lowStock;
+}
+
+/* ---------------- RIGHT DRAWER ---------------- */
+function openRightPanel(code){
+  const it = items().find(i => i.item_code === code);
+  if (!it) return;
+  document.getElementById('drawerCode').innerText = it.item_code;
+  document.getElementById('drawerTitle').innerText = it.item_name;
+  document.getElementById('drawerStock').innerText = it.available_stock.toLocaleString() + ' ' + it.unit;
+  document.getElementById('drawerPrice').innerText = it.purchase_price.toLocaleString() + ' PKR';
+  document.getElementById('drawerSale').innerText = it.sale_price.toLocaleString() + ' PKR';
+  document.getElementById('drawerSupplier').innerText = it.category;
+  document.getElementById('rightDrawer').classList.add('open');
+  document.getElementById('drawerEditBtn').onclick = () => openModal(it.item_code);
+  document.getElementById('drawerDeleteBtn').onclick = () => deleteItem(it.item_code);
+}
+document.getElementById('closeDrawerBtn').onclick = () => document.getElementById('rightDrawer').classList.remove('open');
+
+/* ---------------- ADD / EDIT MODAL ---------------- */
+const overlay = document.getElementById('modalOverlay');
+function openModal(code){
+  editingCode = code || null;
+  document.getElementById('modalTitle').textContent = code ? 'Edit Item' : 'Add New Item';
+  if (code){
+    const it = items().find(i => i.item_code === code);
+    document.getElementById('mItemCode').value = it.item_code;
+    document.getElementById('mItemCode').disabled = true;
+    document.getElementById('mItemName').value = it.item_name;
+    document.getElementById('mCategory').value = it.category;
+    document.getElementById('mStock').value = it.available_stock;
+    document.getElementById('mPurchasePrice').value = it.purchase_price;
+    document.getElementById('mPrice').value = it.sale_price;
+  } else {
+    document.getElementById('mItemCode').disabled = false;
+    ['mItemCode','mItemName','mCategory'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('mStock').value = 0;
+    document.getElementById('mPurchasePrice').value = 0;
+    document.getElementById('mPrice').value = 0;
+  }
+  overlay.classList.add('show');
+}
+document.getElementById('addBtn').onclick = () => openModal(null);
+document.getElementById('modalCancelBtn').onclick = () => overlay.classList.remove('show');
+overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('show'); });
+
+document.getElementById('modalSaveBtn').onclick = () => {
+  const code = document.getElementById('mItemCode').value.trim();
+  const name = document.getElementById('mItemName').value.trim();
+  const category = document.getElementById('mCategory').value.trim() || 'Uncategorized';
+  const stock = parseInt(document.getElementById('mStock').value || 0);
+  const purchasePrice = parseFloat(document.getElementById('mPurchasePrice').value || 0);
+  const price = parseFloat(document.getElementById('mPrice').value || 0);
+  if (!code || !name){ showToast('Item code and description are required', 'danger'); return; }
+
+  if (editingCode){
+    const it = items().find(i => i.item_code === editingCode);
+    AirTouchStore.updateItem(it._id, { name, category, stock, purchase: purchasePrice, sale: price, updated: today });
+    showToast(`${code} updated`, 'success');
+  } else {
+    if (items().some(i => i.item_code === code)){ showToast('Item code already exists', 'danger'); return; }
+    AirTouchStore.addItem({ code, name, category, stock, unit:'Pcs', purchase: purchasePrice, sale: price, minStock:10, updated: today });
+    showToast(`${code} added to inventory`, 'success');
+  }
+  overlay.classList.remove('show');
+  renderTable();
+};
+
+function deleteItem(code){
+  const row = document.querySelector(`tr[data-code="${code}"]`);
+  if (row) row.classList.add('removing');
+  document.getElementById('rightDrawer').classList.remove('open');
+  setTimeout(() => {
+    const it = items().find(i => i.item_code === code);
+    if (it) AirTouchStore.deleteItem(it._id);
+    renderTable();
+    showToast(`${code} deleted`, 'danger');
+  }, 220);
+}
+
+/* ---------------- TOOLBAR ACTIONS ---------------- */
+document.getElementById('refreshBtn').onclick = () => { renderTable(); showToast('Table refreshed', 'success'); };
+/* ---------------- EXPORT (styled .xlsx — branded banner, colored header, banded rows, stock-status highlight, totals) ---------------- */
+document.getElementById('exportBtn').onclick = () => {
+  const exportDate = toISODate(new Date());
+  const rows = items();
+  const COLS = 6; // Item Code, Item Name, Available, Category, Purchase Price, Sale Price
+  const HEADERS = ['Item Code', 'Item Name', 'Available', 'Category', 'Purchase Price', 'Sale Price'];
+
+  // Brand palette pulled from this page's own CSS variables, so the exported
+  // file visually matches the app instead of looking like a generic dump.
+  const NAVY = '146C2E', WHITE = 'FFFFFF', TEXT_DARK = '1E293B', BORDER = 'CBD5E1', RED = 'DC2626', ORANGE = 'D97706';
+
+  const thinBorder = { style: 'thin', color: { rgb: BORDER } };
+  const borderAll = { top: thinBorder, bottom: thinBorder, left: thinBorder, right: thinBorder };
+
+  const titleStyle = { font: { name: 'Calibri', sz: 16, bold: true, color: { rgb: WHITE } }, fill: { fgColor: { rgb: NAVY } }, alignment: { horizontal: 'center', vertical: 'center' } };
+  const subtitleStyle = { font: { name: 'Calibri', sz: 10, italic: true, color: { rgb: '64748B' } }, alignment: { horizontal: 'center' } };
+  const headerStyle = { font: { name: 'Calibri', sz: 11, bold: true, color: { rgb: WHITE } }, fill: { fgColor: { rgb: NAVY } }, alignment: { horizontal: 'center', vertical: 'center' }, border: borderAll };
+  const totalStyle = { font: { name: 'Calibri', sz: 11, bold: true, color: { rgb: WHITE } }, fill: { fgColor: { rgb: NAVY } }, alignment: { horizontal: 'center', vertical: 'center' }, border: borderAll };
+
+  function rowStyle(bandFill, status, colIndex) {
+    const isNumericCol = colIndex === 2 || colIndex === 4 || colIndex === 5;
+    const highlightCol = colIndex === 2; // Available Stock column carries the status color
+    const color = status === 'out' && highlightCol ? RED : (status === 'low' && highlightCol ? ORANGE : TEXT_DARK);
+    const fill = status === 'out' ? 'FEE2E2' : (status === 'low' ? 'FEF3E2' : (bandFill ? 'F0F4F8' : WHITE));
+    return {
+      font: { name: 'Calibri', sz: 10.5, color: { rgb: color }, bold: !!(highlightCol && status !== 'ok') },
+      fill: { fgColor: { rgb: fill } },
+      alignment: { horizontal: isNumericCol ? 'center' : 'left', vertical: 'center' },
+      border: borderAll,
+    };
+  }
+
+  const aoa = [];
+  aoa.push(['Air Touch Enterprise — Inventory Dashboard Export', '', '', '', '', '']);
+  aoa.push([`Generated on ${exportDate}  •  ${rows.length} items`, '', '', '', '', '']);
+  aoa.push(HEADERS);
+  rows.forEach(i => {
+    aoa.push([i.item_code, i.item_name, i.available_stock, i.category || '', i.purchase_price, i.sale_price]);
+  });
+  const totalAvailable = rows.reduce((s, i) => s + (Number(i.available_stock) || 0), 0);
+  const totalPurchaseValue = rows.reduce((s, i) => s + (Number(i.available_stock) || 0) * (Number(i.purchase_price) || 0), 0);
+  const totalSaleValue = rows.reduce((s, i) => s + (Number(i.available_stock) || 0) * (Number(i.sale_price) || 0), 0);
+  const totalsRowIndex = 3 + rows.length;
+  aoa.push(['TOTAL', '', totalAvailable, '', totalPurchaseValue, totalSaleValue]);
+
+  const worksheet = XLSX.utils.aoa_to_sheet(aoa);
+  worksheet['!cols'] = [{wch:12},{wch:26},{wch:11},{wch:14},{wch:15},{wch:12}];
+  worksheet['!rows'] = [{hpt:26},{hpt:16}];
+  worksheet['!merges'] = [
+    { s: { r: 0, c: 0 }, e: { r: 0, c: COLS - 1 } },
+    { s: { r: 1, c: 0 }, e: { r: 1, c: COLS - 1 } },
+  ];
+  worksheet['!freeze'] = { xSplit: 0, ySplit: 3 };
+  worksheet['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 2, c: 0 }, e: { r: totalsRowIndex - 1, c: COLS - 1 } }) };
+
+  for (let c = 0; c < COLS; c++) {
+    const t = XLSX.utils.encode_cell({ r: 0, c });
+    if (worksheet[t]) worksheet[t].s = titleStyle;
+    const s = XLSX.utils.encode_cell({ r: 1, c });
+    if (worksheet[s]) worksheet[s].s = subtitleStyle;
+  }
+  for (let c = 0; c < COLS; c++) {
+    const ref = XLSX.utils.encode_cell({ r: 2, c });
+    if (worksheet[ref]) worksheet[ref].s = headerStyle;
+  }
+  rows.forEach((item, idx) => {
+    const r = 3 + idx;
+    const status = item.available_stock <= 0 ? 'out' : (item.available_stock <= 15 ? 'low' : 'ok');
+    for (let c = 0; c < COLS; c++) {
+      const ref = XLSX.utils.encode_cell({ r, c });
+      if (!worksheet[ref]) continue;
+      worksheet[ref].s = rowStyle(idx % 2 === 1, status, c);
+      if (c === 4 || c === 5) worksheet[ref].z = '#,##0';
+    }
+  });
+  for (let c = 0; c < COLS; c++) {
+    const ref = XLSX.utils.encode_cell({ r: totalsRowIndex, c });
+    if (!worksheet[ref]) continue;
+    worksheet[ref].s = totalStyle;
+    if (c === 4 || c === 5) worksheet[ref].z = '#,##0';
+  }
+
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Inventory');
+  XLSX.writeFile(workbook, `inventory_export_${today}.xlsx`);
+  showToast('Inventory exported as a designed Excel (.xlsx)', 'success');
+};
+document.getElementById('printBtn').onclick = () => window.print();
+
+/* ---------------- UNIVERSAL SEARCH ---------------- */
+const searchInput = document.getElementById('searchInput');
+const searchResults = document.getElementById('searchResults');
+searchInput.addEventListener('input', () => {
+  const q = searchInput.value.trim().toLowerCase();
+  if (!q){ searchResults.classList.remove('show'); return; }
+  const matches = [];
+  items().filter(i => i.item_code.toLowerCase().includes(q) || i.item_name.toLowerCase().includes(q))
+    .forEach(i => matches.push({ type:'Item', label:`${i.item_code} — ${i.item_name}`, sub:`${i.available_stock} ${i.unit} available`, code:i.item_code }));
+  purchases.filter(p => (p.invoiceNum || '').toLowerCase().includes(q) || (p.supplier || '').toLowerCase().includes(q))
+    .forEach(p => matches.push({ type:'Invoice', label:p.invoiceNum, sub:`${p.supplier || ''} · ${p.lines.length} item(s)` }));
+
+  searchResults.innerHTML = matches.length
+    ? matches.map(m => `<div class="search-result-item" data-code="${m.code||''}"><span>${m.label} <small>(${m.type})</small></span><small>${m.sub}</small></div>`).join('')
+    : `<div class="search-empty">No matches for "${searchInput.value}"</div>`;
+  searchResults.classList.add('show');
+  searchResults.querySelectorAll('.search-result-item[data-code]').forEach(el => {
+    el.addEventListener('click', () => { if (el.dataset.code){ openRightPanel(el.dataset.code); searchResults.classList.remove('show'); searchInput.value=''; } });
+  });
+});
+document.addEventListener('click', e => { if (!e.target.closest('.universal-search')) searchResults.classList.remove('show'); });
+
+/* ---------------- DARK MODE ---------------- */
+document.getElementById('darkModeBtn').onclick = () => {
+  const html = document.documentElement;
+  const isDark = html.getAttribute('data-theme') === 'dark';
+  html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+  document.getElementById('darkModeBtn').classList.toggle('fa-moon', isDark);
+  document.getElementById('darkModeBtn').classList.toggle('fa-sun', !isDark);
+};
+
+/* ---------------- NOTIFICATIONS ---------------- */
+const notifList = document.getElementById('notifList');
+notifList.innerHTML = buildActivity().map(a => `<div class="notif-item"><b>${a.time} · ${a.user}</b><span>${a.text}</span></div>`).join('');
+document.getElementById('bellBtn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  document.getElementById('notifPanel').classList.toggle('show');
+  document.getElementById('notifDot').style.display = 'none';
+});
+document.addEventListener('click', () => document.getElementById('notifPanel').classList.remove('show'));
+
+/* ---------------- TOASTS ---------------- */
+function showToast(msg, kind){
+  const stack = document.getElementById('toastStack');
+  const t = document.createElement('div');
+  t.className = `toast ${kind||''}`;
+  t.innerHTML = `<i class="fa-solid fa-circle-check"></i> ${msg}`;
+  stack.appendChild(t);
+  setTimeout(() => { t.classList.add('leaving'); setTimeout(() => t.remove(), 250); }, 2600);
+}
+
+/* ---------------- SIDEBAR TABS (lightweight) ---------------- */
+document.querySelectorAll('.menu-item').forEach(mi => {
+  mi.addEventListener('click', () => {
+    const pageLinks = {
+      inventory: 'store_inventory.html',
+      purchase: 'purchase.html',
+      dispatch: 'dispatch.html',
+      ledger: 'ledger.html',
+      installation: 'installation.html',
+      installation_exchange: 'installation_exchange.html',
+      employees: 'employees.html',
+      settings: 'settings.html',
+    };
+    if (pageLinks[mi.dataset.tab]){ location.href = pageLinks[mi.dataset.tab]; return; }
+    document.querySelectorAll('.menu-item').forEach(x => x.classList.remove('active'));
+    mi.classList.add('active');
+    if (mi.dataset.tab !== 'dashboard'){
+      showToast(`${mi.textContent.trim()} module — coming soon`, '');
+    }
+  });
+});
+
+/* ---------------- CHARTS ---------------- */
+new Chart(document.getElementById('chart1'), {
+  type: 'line',
+  data: { labels: ['Jan','Feb','Mar','Apr','May','Jun'], datasets: [
+    { label:'Purchases', data: [12,19,15,25,22,30], borderColor: '#0A3663', tension:.35 },
+    { label:'Installs', data: [8,12,18,20,25,28], borderColor: '#208B3A', tension:.35 } ] },
+  options: { animation: { duration: 900, easing: 'easeOutQuart' }, plugins: { legend: { display: false } } }
+});
+new Chart(document.getElementById('chart2'), {
+  type: 'bar',
+  data: { labels: ['Jan','Feb','Mar','Apr','May','Jun'], datasets: [{ data: [45,60,52,80,75,90], backgroundColor: '#208B3A' }] },
+  options: { animation: { duration: 900, easing: 'easeOutQuart' }, plugins: { legend: { display: false } } }
+});
+
+/* ---------------- INIT ---------------- */
+renderTable();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ur">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hazrat Bilal Accountant</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <!-- Header -->
+    <div class="header">
+        <h1>⚡ Hazrat Bilal Accountant</h1>
+        <p>Recharge Data Management System</p>
+    </div>
+
+    <!-- Extension Handoff Status -->
+    <div class="receive-status" id="receiveStatus">🟢 WhatsApp Extension کا Data منتظر...</div>
+
+    <!-- Input -->
+    <textarea id="rawInput" placeholder="یہاں WhatsApp Chat Paste کریں..."></textarea>
+
+    <!-- Buttons -->
+    <div class="btn-row">
+        <button id="parseBtn">🔍 Parse Data</button>
+        <button id="downloadBtn">📥 Download Excel</button>
+        <button id="clearBtn">🗑️ Clear</button>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-bar" id="statsBar" style="display:none;">
+        <div class="stat-box">
+            <span id="totalCount">0</span>
+            کل Records
+        </div>
+        <div class="stat-box">
+            <span id="withAmount">0</span>
+            Amount والے
+        </div>
+        <div class="stat-box">
+            <span id="noAmount">0</span>
+            بغیر Amount
+        </div>
+    </div>
+
+    <!-- Search -->
+    <div class="search-row">
+        <input type="text" id="searchInput" placeholder="🔎 ID, Phone, Amount یا Message سے Search کریں...">
+        <span id="searchCount"></span>
+    </div>
+
+    <!-- Table -->
+    <div class="table-wrap">
+        <table id="resultTable">
+            <thead>
+                <tr>
+                    <th>Date/Time</th>
+                    <th>User ID</th>
+                    <th>Amount</th>
+                    <th>Phone</th>
+                    <th>Full Message</th>
+                    <th>Status</th>
+                    <th></th>
+                    <th>Office</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+                <tr>
+                    <td colspan="8" class="empty-msg">
+                        Data Paste کریں اور Parse بٹن دبائیں
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Scripts: پہلے Settings، پھر Parser، پھر Status/Table/Search، پھر Excel، آخر میں Main -->
+    <script src="settings.js"></script>
+    <script src="parser.js"></script>
+
+    <script src="status.js"></script>
+    <script src="table.js"></script>
+    <script src="search.js"></script>
+
+    <script src="xlsx.full.min.js"></script>
+
+    <script src="excel.js"></script>
+    <script src="main.js"></script>
+
+</body>
+
+</html>
