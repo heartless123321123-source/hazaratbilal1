@@ -133,8 +133,64 @@
   @keyframes toastOut { to { opacity: 0; transform: translateX(20px); } }
 </style>
   <script src="airtouch_store.js"></script>
+
+    <style>
+        #loginOverlay {
+            position: fixed; inset: 0; z-index: 9999;
+            background: linear-gradient(135deg, #059669 0%, #0d9488 40%, #0F52BA 100%);
+            display: flex; align-items: center; justify-content: center;
+        }
+        .login-box {
+            background: #fff; border-radius: 20px;
+            padding: 44px 48px; width: 380px; max-width: 95vw;
+            box-shadow: 0 32px 80px rgba(10,54,99,0.35);
+            text-align: center; position: relative; overflow: hidden;
+        }
+        .login-box::before {
+            content:''; position:absolute; top:0; left:0; right:0; height:5px;
+            background: linear-gradient(90deg,#059669,#0F52BA,#059669);
+        }
+        .login-logo { display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:8px; }
+        .login-logo .logo-a { background:#059669; color:#fff; font-size:22px; font-weight:900; padding:8px 14px; border-radius:10px; }
+        .login-logo .logo-t { background:#0F52BA; color:#fff; font-size:22px; font-weight:900; padding:8px 14px; border-radius:10px; }
+        .login-title { font-size:20px; font-weight:800; color:#0F52BA; margin-bottom:4px; font-family:'Segoe UI',sans-serif; }
+        .login-sub   { font-size:12px; color:#64748B; margin-bottom:28px; font-weight:500; font-family:'Segoe UI',sans-serif; }
+        .login-field { margin-bottom:16px; text-align:left; }
+        .login-field label { display:block; font-size:11px; font-weight:700; color:#64748B; text-transform:uppercase; letter-spacing:.6px; margin-bottom:6px; font-family:'Segoe UI',sans-serif; }
+        .login-field input { width:100%; border:2px solid #E2E8F0; border-radius:10px; padding:11px 14px; font-size:13px; color:#1E293B; font-weight:600; outline:none; transition:border-color .2s; font-family:'Segoe UI',sans-serif; box-sizing:border-box; }
+        .login-field input:focus { border-color:#059669; }
+        .login-error { background:#FEF2F2; border:1px solid #FCA5A5; color:#DC2626; border-radius:8px; padding:9px 12px; font-size:12px; font-weight:600; margin-bottom:14px; display:none; font-family:'Segoe UI',sans-serif; }
+        .login-btn { width:100%; background:linear-gradient(135deg,#059669,#0F52BA); color:#fff; border:none; border-radius:10px; padding:13px; font-size:14px; font-weight:800; cursor:pointer; transition:opacity .2s; font-family:'Segoe UI',sans-serif; }
+        .login-btn:hover { opacity:.88; }
+        .login-footer { margin-top:18px; font-size:11px; color:#94A3B8; font-family:'Segoe UI',sans-serif; }
+        .login-pulse { width:10px; height:10px; border-radius:50%; background:#059669; display:inline-block; animation:lpulse 1.4s infinite; margin-right:5px; vertical-align:middle; }
+        @keyframes lpulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(.8)} }
+    </style>
 </head>
 <body>
+
+    <div id="loginOverlay">
+        <div class="login-box">
+            <div class="login-logo">
+                <span class="logo-a">A</span>
+                <span class="logo-t">T</span>
+            </div>
+            <div class="login-title">AirTouch Wireless ISP</div>
+            <div class="login-sub">Dashboard — Secure Login</div>
+            <div class="login-field">
+                <label>Username</label>
+                <input type="text" id="loginUser" placeholder="Enter username" onkeydown="if(event.key==='Enter')doLogin()">
+            </div>
+            <div class="login-field">
+                <label>Password</label>
+                <input type="password" id="loginPass" placeholder="Enter password" onkeydown="if(event.key==='Enter')doLogin()">
+            </div>
+            <div class="login-error" id="loginError">❌ Username ya password ghalat hai. Dobara koshish karein.</div>
+            <button class="login-btn" onclick="doLogin()">🔐 &nbsp;Login & Enter Dashboard</button>
+            <div class="login-footer"><span class="login-pulse"></span>Airtouch Wireless ISP Network (Pvt) Ltd.</div>
+        </div>
+    </div>
+
 
 <aside class="sidebar">
   <div class="brand-header">
@@ -620,6 +676,24 @@ new Chart(document.getElementById('chart2'), {
 /* ---------------- INIT ---------------- */
 renderTable();
 </script>
+
+
+    <script>
+        const _USERS = [{ username: "hazrat bilal", password: "5365" }];
+        function doLogin() {
+            const u = document.getElementById('loginUser').value.trim().toLowerCase();
+            const p = document.getElementById('loginPass').value.trim();
+            const err = document.getElementById('loginError');
+            if (_USERS.some(x => x.username === u && x.password === p)) {
+                document.getElementById('loginOverlay').style.display = 'none';
+                err.style.display = 'none';
+            } else {
+                err.style.display = 'block';
+                document.getElementById('loginPass').value = '';
+                document.getElementById('loginPass').focus();
+            }
+        }
+    </script>
 
 </body>
 </html>

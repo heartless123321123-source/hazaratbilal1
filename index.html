@@ -98,6 +98,70 @@
 </head>
 <body class="font-sans antialiased text-slate-800 pb-16 min-h-screen">
 
+    <!-- ================= LOGIN GATE ================= -->
+    <div id="login-gate" class="fixed inset-0 z-[9999] flex items-center justify-center gradient-bg-main">
+        <div class="glass-card w-full max-w-sm mx-4 rounded-3xl p-8 shadow-2xl">
+            <div class="flex flex-col items-center mb-6">
+                <div class="w-14 h-14 gradient-bg-main rounded-2xl flex items-center justify-center text-white font-extrabold text-xl shadow-lg mb-3">AT</div>
+                <h2 class="font-extrabold text-slate-900 text-lg">AIRTOUCH Pro</h2>
+                <p class="text-xs font-semibold text-slate-500 uppercase tracking-widest">Please Login</p>
+            </div>
+            <form id="login-form" class="space-y-4" onsubmit="return false;">
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1">Username</label>
+                    <input id="login-username" type="text" autocomplete="username" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-blue text-sm" placeholder="Username">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1">Password</label>
+                    <input id="login-password" type="password" autocomplete="current-password" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-blue text-sm" placeholder="Password">
+                </div>
+                <p id="login-error" class="text-xs font-bold text-rose-600 hidden">Username ya Password ghalat hai.</p>
+                <button id="login-submit-btn" type="submit" class="w-full blue-green-btn text-white font-bold py-2.5 rounded-xl shadow-md hover:opacity-90 transition">Login</button>
+            </form>
+        </div>
+    </div>
+    <script>
+        (function () {
+            const VALID_USER = "hazratbilal";
+            const VALID_PASS = "5362";
+            const SESSION_KEY = "airtouch_logged_in_v1";
+
+            const gate = document.getElementById('login-gate');
+
+            function unlock() {
+                gate.style.display = 'none';
+                document.documentElement.style.overflow = '';
+            }
+
+            // Already logged in this session? skip the form.
+            if (sessionStorage.getItem(SESSION_KEY) === 'yes') {
+                unlock();
+            } else {
+                document.documentElement.style.overflow = 'hidden';
+            }
+
+            function tryLogin() {
+                const u = document.getElementById('login-username').value.trim();
+                const p = document.getElementById('login-password').value.trim();
+                const err = document.getElementById('login-error');
+                if (u === VALID_USER && p === VALID_PASS) {
+                    sessionStorage.setItem(SESSION_KEY, 'yes');
+                    err.classList.add('hidden');
+                    unlock();
+                } else {
+                    err.classList.remove('hidden');
+                }
+            }
+
+            document.getElementById('login-form').addEventListener('submit', tryLogin);
+            document.getElementById('login-submit-btn').addEventListener('click', tryLogin);
+            document.getElementById('login-password').addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') tryLogin();
+            });
+        })();
+    </script>
+    <!-- ================ /LOGIN GATE ================= -->
+
     <!-- TOP HEADER -->
     <header class="glass-card sticky top-0 z-50 border-b border-slate-200/60">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
