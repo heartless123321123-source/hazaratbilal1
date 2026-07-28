@@ -1,0 +1,34 @@
+AirTouch ERP - GitHub Update Guide
+
+Whenever you make changes in your laptop project and want to update the
+live GitHub website:
+
+1.  Open your project in VS Code.
+2.  Open Terminal.
+
+Run:
+
+    git status
+    git add .
+    git commit -m "Describe your update"
+    git push
+
+Examples:
+
+-   git commit -m “Updated Inventory Module”
+-   git commit -m “Improved Billing System”
+-   git commit -m “Fixed Dashboard UI”
+-   git commit -m “Added WhatsApp Parser”
+
+Wait 1-2 minutes, then refresh your GitHub Pages website.
+
+Useful commands:
+
+-   git status
+-   git add .
+-   git commit -m “Message”
+-   git push
+
+If git push shows an error, copy the error and ask ChatGPT.
+
+Project: AirTouch ERP Owner: Hazrat Bilal Hosting: GitHub Pages

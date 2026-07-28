@@ -182,6 +182,62 @@
   .modem-pill-XPON { background:#DCFCE7; color:var(--success-green); padding:2px 7px; border-radius:10px; font-weight:800; }
   .modem-pill-5G-XPON { background:#FEF3C7; color:var(--warning-orange); padding:2px 7px; border-radius:10px; font-weight:800; }
 </style>
+<style>
+  /* ---- Mobile responsiveness (additive only — desktop layout above is untouched) ---- */
+  .mobile-menu-btn { display: none; }
+
+  @media (max-width: 900px) {
+    body { overflow: auto; height: auto; min-height: 100vh; }
+
+    .mobile-menu-btn {
+      display: flex; align-items: center; justify-content: center;
+      width: 34px; height: 34px; border-radius: 6px; border: 1px solid var(--border-color);
+      background: #F8FAFC; color: var(--primary-blue); font-size: 15px; cursor: pointer; flex-shrink: 0;
+    }
+
+    .sidebar {
+      position: fixed; top: 0; left: 0; height: 100vh; z-index: 200;
+      transform: translateX(-100%); transition: transform .2s ease;
+    }
+    .sidebar.mobile-open { transform: translateX(0); }
+
+    .sidebar-overlay {
+      display: none; position: fixed; inset: 0; background: rgba(15,26,43,.5); z-index: 150;
+    }
+    .sidebar-overlay.show { display: block; }
+
+    .main-wrapper { width: 100%; }
+
+    .top-bar { padding: 10px 12px; gap: 10px; flex-wrap: wrap; }
+    .global-search { width: 100%; order: 3; }
+    .top-right { gap: 12px; }
+
+    .header-section { flex-direction: column; align-items: flex-start; gap: 10px; padding: 10px 12px; }
+    .action-toolbar { flex-wrap: wrap; width: 100%; }
+    .action-toolbar .btn { flex: 1 1 auto; justify-content: center; font-size: 10px; padding: 8px 8px; }
+
+    .content-body { padding: 12px; }
+
+    .page-tabs { flex-wrap: wrap; }
+    .page-tab { flex: 1 1 45%; }
+
+    .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+
+    .form-row, .modal-row { grid-template-columns: 1fr; }
+
+    table:not(.data-table):not(.lines-table) { display: block; }
+    table:not(.data-table):not(.lines-table) thead { display: none; }
+    table:not(.data-table):not(.lines-table) tbody, table:not(.data-table):not(.lines-table) tr { display: block; width: 100%; }
+    table:not(.data-table):not(.lines-table) tr { border: 1px solid var(--border-color); border-radius: 6px; margin-bottom: 8px; padding: 6px 0; }
+    table:not(.data-table):not(.lines-table) td { display: flex; justify-content: space-between; gap: 10px; text-align: right; border-bottom: none; padding: 5px 10px; }
+    table:not(.data-table):not(.lines-table) td::before { content: attr(data-label); font-weight: 700; color: var(--text-muted); text-align: left; }
+
+    .modal-box, .modal-box.wide { width: 92vw; }
+
+    .bill-summary { justify-content: space-between; gap: 12px; }
+    .bill-summary .item { text-align: left; }
+  }
+</style>
   <script src="airtouch_store.js"></script>
 </head>
 <body>
@@ -246,10 +302,12 @@
       </div>
     </nav>
   </aside>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
   <main class="main-wrapper">
 
     <header class="top-bar">
+      <div class="mobile-menu-btn" id="mobileMenuBtn"><i class="fa-solid fa-bars"></i></div>
       <div class="global-search">
         <i class="fa-solid fa-magnifying-glass" style="color:var(--text-muted);"></i>
         <input type="text" id="searchInput" placeholder="🔍 Search User ID / City...">
@@ -273,11 +331,16 @@
       </div>
 
       <div class="action-toolbar">
-        <button class="btn btn-outline" id="importBtn"><i class="fa-solid fa-file-import"></i> 📥 Import Excel</button>
+        <button class="btn btn-primary" id="importBtn" style="background:#0F52BA;">
+          <i class="fa-solid fa-file-import"></i> 📥 Import Excel
+        </button>
         <input type="file" id="importFileInput" accept=".xlsx,.xls,.csv" style="display:none;">
         <button class="btn btn-outline" id="exportBtn"><i class="fa-solid fa-file-export"></i> 📤 Export Excel</button>
         <button class="btn btn-outline" id="printBtn"><i class="fa-solid fa-print"></i> 🖨 Print</button>
         <button class="btn btn-outline" id="refreshBtn"><i class="fa-solid fa-rotate"></i> 🔄 Refresh</button>
+        <button class="btn btn-danger" id="clearAllBtn" onclick="clearAllInstallations()" style="margin-left:8px;">
+          <i class="fa-solid fa-trash-can"></i> 🗑 Clear All Table
+        </button>
       </div>
     </section>
 
@@ -656,6 +719,20 @@
       element.parentElement.classList.toggle('open');
     }
 
+    /* ---------------- MOBILE SIDEBAR ---------------- */
+    const sidebarEl = document.querySelector('.sidebar');
+    const sidebarOverlayEl = document.getElementById('sidebarOverlay');
+    function openMobileSidebar(){ sidebarEl.classList.add('mobile-open'); sidebarOverlayEl.classList.add('show'); }
+    function closeMobileSidebar(){ sidebarEl.classList.remove('mobile-open'); sidebarOverlayEl.classList.remove('show'); }
+    document.getElementById('mobileMenuBtn').onclick = () => {
+      sidebarEl.classList.contains('mobile-open') ? closeMobileSidebar() : openMobileSidebar();
+    };
+    sidebarOverlayEl.onclick = closeMobileSidebar;
+    // Close the drawer automatically once a nav item is tapped on mobile
+    sidebarEl.querySelectorAll('.tree-item, .menu-header[onclick]').forEach(el => {
+      el.addEventListener('click', () => { if (window.innerWidth <= 900) closeMobileSidebar(); });
+    });
+
     /* ---------------- PAGE TABS ---------------- */
     function switchTab(tab){
       document.querySelectorAll('.page-tab[data-page-tab]').forEach(t => t.classList.toggle('active', t.dataset.pageTab === tab));
@@ -787,7 +864,7 @@
       patchcord: { name: 'Patch Cord', stock: 1000 },
     };
 
-    /* ---------------- MOCK INSTALLATIONS — seeded from your Excel sheet ---------------- */
+    /* ---------------- INSTALLATIONS DATA ------------------------------------------------ */
     // grand total = installation_charge + extra_wire_total + extra_modem + extra_patch_cord
     let installSeq = 0;
     function mkInstall(user_id, city, modem_type, installation_charge, wire_rate, wire_meters, extra_modem, extra_patch_cord, date, other_item_name, other_item_amount){
@@ -800,21 +877,7 @@
         remarks: '', date: date || '2026-07-20'
       };
     }
-    let installations = [
-      mkInstall('dhr824', 'TLS', 'EPON', 8000, 0,    0, 0, 0),
-      mkInstall('dhr825', 'TLS', 'EPON', 8000, 1400, 1, 0, 0),
-      mkInstall('dhr826', 'TLS', 'GPON', 8000, 1500, 1, 0, 0),
-      mkInstall('dhr827', 'TLS', 'EPON', 8000, 1400, 1, 0, 0),
-      mkInstall('dhr828', 'TLS', 'EPON', 8000, 0,    0, 0, 0),
-      mkInstall('dhr829', 'BTK', 'EPON', 8000, 2500, 1, 0, 0),
-      mkInstall('dhr830', 'BTK', 'GPON', 8000, 200,  1, 0, 0),
-      mkInstall('dhr831', 'BTK', 'EPON', 8000, 0,    0, 0, 0),
-      mkInstall('dhr832', 'BTK', 'EPON', 8000, 3700, 1, 0, 0),
-      mkInstall('Tok272', 'BTK', 'GPON', 8000, 3000, 1, 0, 0),
-      mkInstall('Mbd294', 'BTK', 'EPON', 5000, 1700, 1, 0, 0),
-      mkInstall('Mbd295', 'BTK', 'EPON', 5000, 1900, 1, 0, 0),
-      mkInstall('Mbd296', 'BTK', 'EPON', 5000, 1200, 1, 0, 0),
-    ];
+    let installations = []; // Fake data hata di — sirf aapka asli data aayega
 
     /* ---------------- MOCK RETURNS ---------------- */
     let returnSeq = 0;
@@ -837,7 +900,7 @@
             installSeq = installations.reduce((max, i) => Math.max(max, i.id || 0), 0);
           }
         }
-      } catch (e) { /* ignore corrupted storage, keep sample data */ }
+      } catch (e) { /* ignore corrupted storage, start fresh */ }
       try {
         const savedStock = localStorage.getItem('installation_stock_data');
         if (savedStock) {
@@ -1027,8 +1090,13 @@
           <td class="extra-cell">${i.other_item_amount ? money(i.other_item_amount) : '—'}</td>
           <td class="grand-total-cell">${money(t.grand)}</td>
           <td>
-            <div class="row-actions">
-              <button class="btn-icon" title="View Installation" data-action="view"><i class="fa-solid fa-eye"></i></button>
+            <div class="row-actions" style="display:flex;gap:4px;align-items:center;">
+              <button class="btn-icon" title="View" data-action="view" style="background:#EFF6FF;border-color:#BFDBFE;color:#1D4ED8;">
+                <i class="fa-solid fa-eye"></i>
+              </button>
+              <button class="btn-icon" title="Delete" data-action="delete" style="background:#FEF2F2;border-color:#FECACA;color:#DC2626;">
+                <i class="fa-solid fa-trash"></i>
+              </button>
             </div>
           </td>
         </tr>`;
@@ -1038,7 +1106,12 @@
         btn.addEventListener('click', (e) => {
           e.stopPropagation();
           const id = Number(btn.closest('tr').dataset.id);
-          openViewModal(id);
+          const action = btn.dataset.action;
+          if (action === 'view') {
+            openViewModal(id);
+          } else if (action === 'delete') {
+            deleteInstallation(id);
+          }
         });
       });
 
@@ -1144,12 +1217,12 @@
       body.innerHTML = rows.map(r => {
         const inst = installations.find(i => i.id === r.installId);
         return `<tr>
-          <td><code>RET-${r.id}</code></td>
-          <td>${inst ? inst.user_id : '—'}</td>
-          <td>${stockItems[r.item] ? stockItems[r.item].name : r.item}</td>
-          <td><strong>${r.qty}</strong></td>
-          <td style="color:var(--text-muted);">${r.reason}</td>
-          <td>${r.date}</td>
+          <td data-label="Return #"><code>RET-${r.id}</code></td>
+          <td data-label="User ID">${inst ? inst.user_id : '—'}</td>
+          <td data-label="Item">${stockItems[r.item] ? stockItems[r.item].name : r.item}</td>
+          <td data-label="Qty Returned"><strong>${r.qty}</strong></td>
+          <td data-label="Reason" style="color:var(--text-muted);">${r.reason}</td>
+          <td data-label="Date">${r.date}</td>
         </tr>`;
       }).join('') || `<tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:16px;">No material returned yet</td></tr>`;
     }
@@ -1431,6 +1504,33 @@
     /* ---------------- INIT ---------------- */
     resetNewInstallForm();
     renderInstallations('');
+
+    // ── DELETE SINGLE ROW ──────────────────────────────────────
+    function deleteInstallation(id) {
+      if (!confirm('Yeh installation delete karen? Yeh action undo nahi hoga.')) return;
+      const tr = document.querySelector(`#installBody tr[data-id="${id}"]`);
+      const finishDelete = () => {
+        installations = installations.filter(i => i.id !== id);
+        saveInstallationsToStorage();
+        renderInstallations('');
+        showToast('Installation deleted', 'success');
+      };
+      if (tr) {
+        tr.classList.add('removing');
+        setTimeout(finishDelete, 200);
+      } else {
+        finishDelete();
+      }
+    }
+
+    // ── CLEAR ALL TABLE ────────────────────────────────────────
+    function clearAllInstallations() {
+      if (!confirm('⚠️ Kya aap saari installations delete karna chahte hain?\nYeh action undo nahi hoga.')) return;
+      installations = [];
+      saveInstallationsToStorage();
+      renderInstallations('');
+      showToast('✅ Saari installations clear ho gayi', 'success');
+    }
     populateReturnForm();
     renderReturns();
     saveInstallationsToStorage();
